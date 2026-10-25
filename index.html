@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-Hant">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -494,7 +494,7 @@ Object.assign(I18N_D.ko, {"再按一次播放": "재생을 한 번 더 누르세
 Object.assign(I18N_D.en, {"再按一次播放": "Tap play once more"});
 Object.assign(I18N_D.ko, {"存在你們的 Google Drive": "Google Drive에 저장", "書、有聲書和進度都存在 Google Drive，電腦和手機是同一個書架；手機上也留一份，沒網路也能聽。": "책·오디오북·진도가 Google Drive에 저장되어 컴퓨터와 휴대폰이 같은 책장을 씁니다. 휴대폰에도 사본이 있어 오프라인에서도 들을 수 있습니다.", "用裝置內建的語音朗讀；想要更自然的聲音，就匯入 make_audiobook.py 轉好的有聲書 MP3。": "기기 내장 음성으로 읽습니다. 더 자연스러운 목소리는 make_audiobook.py로 만든 오디오북 MP3를 가져오세요.", "用 R&J 的 Google 帳號登入。這台裝置登入一次就會記住，之後沒網路也能打開。": "R&J Google 계정으로 로그인하세요. 이 기기에서 한 번 로그인하면 기억되어 오프라인에서도 열 수 있습니다.", "用 Google 登入": "Google로 로그인", "已同步到 Google Drive（{0}），電腦和手機都看得到。": "Google Drive({0})에 동기화됨 · 컴퓨터와 휴대폰에서 모두 보입니다.", "暫時沒有連上 Google Drive，書和進度先存在這台裝置，連上後會自動同步。": "지금은 Google Drive에 연결되지 않았습니다. 책과 진도는 이 기기에 저장되고, 연결되면 자동 동기화됩니다.", "重新連線": "다시 연결", "正在存到 Google Drive…": "Google Drive에 저장 중…", "這個 Google 帳號不能使用 Voice of Books，請換 R&J 的帳號。": "이 Google 계정은 Voice of Books를 사용할 수 없습니다. R&J 계정으로 로그인하세요.", "登入沒有完成：{0}": "로그인이 완료되지 않았습니다: {0}", "登入沒有完成，請再試一次。": "로그인이 완료되지 않았습니다. 다시 시도하세요.", "還沒設定 Google 登入。": "Google 로그인이 아직 설정되지 않았습니다.", "第一次登入需要網路。": "처음 로그인할 때는 인터넷이 필요합니다."});
 Object.assign(I18N_D.en, {"存在你們的 Google Drive": "Kept in your Google Drive", "書、有聲書和進度都存在 Google Drive，電腦和手機是同一個書架；手機上也留一份，沒網路也能聽。": "Books, audiobooks and progress live in Google Drive, so computer and phone share one shelf; the phone keeps a copy for listening offline.", "用裝置內建的語音朗讀；想要更自然的聲音，就匯入 make_audiobook.py 轉好的有聲書 MP3。": "Reads with your device’s built-in voices; for a more natural voice, import audiobook MP3s made with make_audiobook.py.", "用 R&J 的 Google 帳號登入。這台裝置登入一次就會記住，之後沒網路也能打開。": "Sign in with the R&J Google account. This device remembers it, so the app opens even offline.", "用 Google 登入": "Sign in with Google", "已同步到 Google Drive（{0}），電腦和手機都看得到。": "Synced to Google Drive ({0}) · visible on computer and phone.", "暫時沒有連上 Google Drive，書和進度先存在這台裝置，連上後會自動同步。": "Not connected to Google Drive right now; books and progress are kept on this device and sync when connected.", "重新連線": "Reconnect", "正在存到 Google Drive…": "Saving to Google Drive…", "這個 Google 帳號不能使用 Voice of Books，請換 R&J 的帳號。": "This Google account can’t use Voice of Books. Please sign in with the R&J account.", "登入沒有完成：{0}": "Sign-in didn’t finish: {0}", "登入沒有完成，請再試一次。": "Sign-in didn’t finish. Please try again.", "還沒設定 Google 登入。": "Google sign-in isn’t set up yet.", "第一次登入需要網路。": "The first sign-in needs a connection."});
-let UI = 'zh';
+let UI = 'en';
 function T(k, ...a){
   const d = I18N_D[UI]; const s = d && d[k] != null ? d[k] : k;
   return a.length ? s.replace(/\{(\d+)\}/g, (_, i) => a[+i] == null ? '' : String(a[+i])) : s;
@@ -541,7 +541,7 @@ try{ navigator.storage && navigator.storage.persist && navigator.storage.persist
 /* ---------- state ---------- */
 const PROFILES = { ruby:'Ruby', joon:'Joon' };
 let WHO = ls.get('vob:who', 'ruby'); if (!PROFILES[WHO]) WHO = 'ruby';
-const defPrefs = () => ({ ui: WHO === 'joon' ? 'ko' : 'zh', gender: WHO === 'joon' ? 'male' : 'female', rate:1, voice:{}, fs:20, bad:[], engine:'device', aiVoice:{ female:'af_heart', male:'am_michael' } });
+const defPrefs = () => ({ ui: 'en', gender: WHO === 'joon' ? 'male' : 'female', rate:1, voice:{}, fs:20, bad:[], engine:'device', aiVoice:{ female:'af_heart', male:'am_michael' } });
 let LIB = ls.get('vob:lib', {});                       // bookId -> {title,name,kind,lang,assetId,added}
 let PROG = ls.get('vob:prog:' + WHO, null) || { books:{}, prefs:defPrefs(), last:null, at:0 };
 let prefs = Object.assign(defPrefs(), PROG.prefs || {});
