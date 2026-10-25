@@ -7,120 +7,2899 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Voice of Books">
 <meta name="theme-color" content="#1f6b5c">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
 <style>
-:root{--bg:#f4f3ef;--surface:#fbfaf7;--ink:#1d211f;--muted:#5f6763;--line:#d9d7d0;--accent:#1f6b5c;--ok:#1f7a45;--bad:#a8432f}
-@media (prefers-color-scheme:dark){:root{--bg:#151816;--surface:#1d211f;--ink:#e9ece9;--muted:#9aa39e;--line:#333a36;--accent:#5fb39d;--ok:#6cc08b;--bad:#e38a76}}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"PingFang TC",sans-serif}
-main{max-width:560px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px 40px}
-h1{font-size:22px;margin:0 0 6px}
-p{margin:0 0 12px;color:var(--muted)}
-.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:12px 0}
-.card h2{font-size:16px;margin:0 0 6px}
-.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-button{font:inherit;font-weight:600;border:0;border-radius:999px;padding:9px 18px;background:var(--accent);color:#fff;cursor:pointer}
-button.stop{background:transparent;color:var(--ink);border:1px solid var(--line)}
-.st{font-variant-numeric:tabular-nums;font-size:14px;color:var(--muted)}
-.res{font-weight:600;margin-top:6px;font-size:14px}
-.ok{color:var(--ok)} .bad{color:var(--bad)}
-ol{padding-left:20px;margin:0;color:var(--muted)}
-</style>
-</head>
-<body>
-<main>
-  <h1>Voice of Books · 測試版</h1>
-  <p>先確認這三件事在 iPhone 上可以，再把整個 Voice of Books 搬過來。</p>
-
-  <div class="card"><h2>0. 狀態</h2>
-    <div class="res" id="mode"></div>
-    <div class="res" id="net"></div>
-    <div class="res" id="store">檢查中…</div>
-  </div>
-
-  <div class="card"><h2>1. 沒網路也能打開</h2>
-    <ol>
-      <li>用 Safari 打開這頁 → 分享 →「加入主畫面」。</li>
-      <li>從主畫面的圖示打開一次，等「離線準備」變成 ✓。</li>
-      <li>打開飛航模式，把這個 App 往上滑掉，再從主畫面打開。打得開就成功。</li>
-    </ol>
-    <div class="res" id="sw">離線準備：檢查中…</div>
-  </div>
-
-  <div class="card" data-k="a"><h2>2. 螢幕暗掉繼續播（網路上的音檔）</h2>
-    <div class="row"><button data-play>播放</button><button class="stop" data-stop>停止</button><span class="st" data-st>—</span></div><div class="res" data-res></div></div>
-
-  <div class="card" data-k="b"><h2>3. 螢幕暗掉繼續播（存在手機裡的音檔，離線用）</h2>
-    <div class="row"><button data-play>播放</button><button class="stop" data-stop>停止</button><span class="st" data-st>—</span></div><div class="res" data-res></div></div>
-
-  <p class="st">播放後按電源鍵讓螢幕暗掉，等 30 秒再打開，看那一格的結果。測試音是一段嗡嗡的音調，不是書。</p>
-</main>
-<script>
-const $ = (c, s) => c.querySelector(s);
-const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
-document.getElementById('mode').textContent = standalone ? '✓ 從主畫面打開' : '在瀏覽器裡打開（請加入主畫面再測）';
-const net = () => { document.getElementById('net').textContent = navigator.onLine ? '有網路' : '沒有網路（離線中）'; };
-net(); addEventListener('online', net); addEventListener('offline', net);
-
-// offline: service worker caches this page and the test audio
-if ('serviceWorker' in navigator){
-  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(() => {
-    const el = document.getElementById('sw'); el.textContent = '✓ 離線準備好了'; el.className = 'res ok';
-  }).catch(e => { const el = document.getElementById('sw'); el.textContent = '✗ 離線準備失敗：' + e.message; el.className = 'res bad'; });
-} else document.getElementById('sw').textContent = '✗ 這裡不支援離線';
-
-// storage: does the phone keep what this app saves?
-(async () => {
-  const el = document.getElementById('store'), now = new Date().toLocaleString();
-  let a; try{ a = localStorage.getItem('vob:first'); if (!a){ a = now; localStorage.setItem('vob:first', a); } }catch(e){ a = '不能用'; }
-  let p = '?';
-  try{ if (navigator.storage && navigator.storage.persist) p = (await navigator.storage.persist()) ? '是' : '否'; }catch(e){}
-  let q = '';
-  try{ const e = await navigator.storage.estimate(); q = ` · 可用空間約 ${Math.round(e.quota / 1e9)} GB`; }catch(e){}
-  el.textContent = `第一次記錄：${a} · 長期保存：${p}${q}`;
-})();
-
-// a copy of the audio kept on the phone (IndexedDB), played from there
-const idb = () => new Promise((res, rej) => { const r = indexedDB.open('vob-test', 1); r.onupgradeneeded = () => r.result.createObjectStore('f'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
-async function localBlobUrl(){
-  const db = await idb();
-  let blob = await new Promise(res => { const g = db.transaction('f').objectStore('f').get('tone'); g.onsuccess = () => res(g.result); g.onerror = () => res(null); });
-  if (!blob){
-    const r = await fetch('test-tone.mp3'); blob = await r.blob();
-    await new Promise(res => { const t = db.transaction('f', 'readwrite'); t.objectStore('f').put(blob, 'tone'); t.oncomplete = res; t.onerror = res; });
-  }
-  return URL.createObjectURL(new Blob([blob], { type:'audio/mpeg' }));
+/* Layout: reading-room console — chapter rail on the left, the page in the middle, a transport bar docked at the bottom like a tape deck. Reading mode drops the rail chrome and widens the type. */
+:root{
+  --bg:#ECEFEC; --surface:#F7F8F6; --ink:#18201D; --muted:#5B6661; --line:#D3D9D4;
+  --accent:#1D6A5C; --accent-ink:#FFFFFF; --hl:#D5EAE1; --hl-ink:#0F3F35; --warn:#9A5B12; --ok:#2E7D4F;
+  --f-read:"Newsreader", "Noto Serif TC", Georgia, "Times New Roman", serif;
+  --f-ui:"IBM Plex Sans", "Noto Sans TC", "Noto Sans KR", "PingFang TC", "Apple SD Gothic Neo", "Malgun Gothic", "Microsoft JhengHei", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --bar-h:84px; --fs:20px;
 }
-let blobUrl = null; localBlobUrl().then(u => blobUrl = u).catch(() => {});
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111613; --surface:#18201C; --ink:#E3E8E4; --muted:#93A099; --line:#2A3430;
+  --accent:#62C3AA; --accent-ink:#0B1512; --hl:#1F3A31; --hl-ink:#CFF1E5; --warn:#E0A55A; --ok:#6FCF97; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111613; --surface:#18201C; --ink:#E3E8E4; --muted:#93A099; --line:#2A3430;
+  --accent:#62C3AA; --accent-ink:#0B1512; --hl:#1F3A31; --hl-ink:#CFF1E5; --warn:#E0A55A; --ok:#6FCF97; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html,body{min-height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-ui);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding-block:6px calc(var(--bar-h) + 40px)}
+header.top{display:flex;align-items:center;justify-content:space-between;gap:10px 12px;flex-wrap:wrap;margin-bottom:14px;
+  padding-block:10px}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:16;background:var(--bg)}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand b{font-family:var(--f-read);font-weight:600;font-size:26px;letter-spacing:.01em}
+.brand span{color:var(--muted);font-size:13px}
+.hdr-r{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ghost{background:none;border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted)}
+.ghost:hover{color:var(--ink);border-color:var(--muted)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:2px;background:var(--surface)}
+.seg button{border:none;background:none;border-radius:999px;padding:5px 12px;font-size:13px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);font-weight:600}
 
-const players = {};
-document.querySelectorAll('.card[data-k]').forEach(card => {
-  const k = card.dataset.k, st = $(card, '[data-st]'), res = $(card, '[data-res]');
-  const P = players[k] = { el: null, hiddenAt: null, posAtHide: 0 };
-  $(card, '[data-play]').onclick = async () => {
-    Object.entries(players).forEach(([kk, p]) => { if (kk !== k && p.el) p.el.pause(); });
-    res.textContent = ''; res.className = 'res';
-    try{
-      if (k === 'b' && !blobUrl) throw new Error('還在準備，等兩秒再按');
-      if (!P.el){ P.el = new Audio(k === 'a' ? 'test-tone.mp3' : blobUrl); P.el.loop = true; P.el.onerror = () => { res.textContent = '✗ 播不出來（' + (P.el.error && P.el.error.code) + '）'; res.className = 'res bad'; }; }
-      await P.el.play();
-      if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: '測試 ' + (k === 'a' ? '2' : '3'), artist: 'Voice of Books' });
-    }catch(e){ res.textContent = '✗ ' + e.message; res.className = 'res bad'; }
+/* shelf / empty state */
+.drop{border:1.5px dashed var(--line);border-radius:14px;background:var(--surface);padding:clamp(24px,5vw,56px) clamp(18px,5vw,56px);
+  display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:32px 40px;align-items:center}
+.drop.over{border-color:var(--accent);background:var(--hl)}
+.drop h1{font-family:var(--f-read);font-weight:500;font-size:clamp(28px,4.4vw,44px);line-height:1.1;margin:0 0 14px;text-wrap:balance}
+.drop > div > p{margin:0 0 18px;color:var(--muted);max-width:46ch}
+.pick{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:var(--accent-ink);border:none;border-radius:999px;padding:12px 22px;font-weight:600}
+.facts{list-style:none;margin:0;padding:0;display:grid;gap:14px;font-size:14px}
+.facts li{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
+.facts .k{font-family:var(--f-mono);font-size:12px;color:var(--accent);border:1px solid var(--line);border-radius:6px;text-align:center;padding:1px 0}
+.facts strong{display:block;font-weight:600}
+.facts span{color:var(--muted)}
+.status{margin-top:14px;font-size:13px;color:var(--muted);min-height:1.5em}
+.status.err{color:var(--warn)}
+.meter{height:4px;background:var(--line);border-radius:2px;overflow:hidden;margin-top:8px;max-width:360px}
+.meter i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.shelf{grid-column:1/-1;border-top:1px solid var(--line);padding-top:22px}
+.shelf h3{font-family:var(--f-read);font-weight:600;font-size:20px;margin:0 0 2px}
+.shelf .hint{font-size:13px;color:var(--muted);margin:0 0 12px}
+.shelf ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.shelf li{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.shelf .aud{font-size:12px;white-space:nowrap}
+.shelf .open{flex:1;min-width:0;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:grid;gap:2px}
+.shelf .open:hover{border-color:var(--accent)}
+.shelf .bt{font-family:var(--f-read);font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shelf .bm{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip{display:inline-block;font-size:11px;border-radius:999px;padding:0 7px;border:1px solid currentColor;margin-right:6px}
+.chip.ok{color:var(--ok)} .chip.loc{color:var(--warn)}
+.sync{font-size:12px;color:var(--muted)}
+.sync.ok{color:var(--ok)}
+
+/* book view */
+.book{display:grid;grid-template-columns:300px minmax(0,1fr);gap:28px;align-items:start}
+aside.toc{position:sticky;top:calc(env(safe-area-inset-top,0px) + 16px);max-height:calc(100vh - var(--bar-h) - 48px);overflow:auto;
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 8px 10px}
+.toc .meta{padding:0 10px 12px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.toc .meta h2{font-family:var(--f-read);font-weight:600;font-size:19px;line-height:1.2;margin:0 0 4px;text-wrap:balance;overflow-wrap:anywhere}
+.toc .meta small{color:var(--muted);font-size:12px;overflow-wrap:anywhere}
+.toc ol{list-style:none;margin:0;padding:0}
+.toc li button{width:100%;text-align:left;background:none;border:none;border-radius:8px;padding:8px 10px;display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center}
+.toc li button:hover{background:var(--hl)}
+.toc li .t{font-size:14px;line-height:1.3}
+.toc li .p{font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.toc li .bar{grid-column:1/-1;height:3px;border-radius:2px;background:var(--line);overflow:hidden}
+.toc li .bar i{display:block;height:100%;width:0;background:var(--accent)}
+.toc li.side .t{color:var(--muted)}
+.toc li.cur button{background:var(--hl)}
+.toc li.cur .t{font-weight:600;color:var(--hl-ink)}
+.tocToggle{display:none}
+
+main.reader{min-width:0}
+.chhead{display:flex;justify-content:space-between;align-items:end;gap:16px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:8px}
+.chhead .eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.chhead h2{font-family:var(--f-read);font-weight:500;font-size:clamp(24px,3.2vw,34px);line-height:1.15;margin:2px 0 0;text-wrap:balance}
+.chhead .stat{font-family:var(--f-mono);font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.text{font-family:var(--f-read);font-size:19px;line-height:1.7;max-width:68ch}
+.para{display:grid;grid-template-columns:52px minmax(0,1fr);gap:6px;margin:14px 0}
+.para .lab{font-family:var(--f-mono);font-size:11px;color:var(--muted);padding-top:7px;text-align:right;padding-right:8px;border-right:1px solid var(--line)}
+.para.h .body{font-weight:600;font-size:1.08em}
+.s{cursor:pointer;border-radius:3px;transition:background .15s}
+.s:hover{background:color-mix(in srgb,var(--hl) 55%,transparent)}
+.s.on{background:var(--hl);color:var(--hl-ink);box-shadow:0 0 0 3px var(--hl)}
+.s.done{color:color-mix(in srgb,var(--ink) 72%,var(--bg))}
+.loading{color:var(--muted);font-family:var(--f-ui);font-size:14px;padding:30px 0}
+.endnote{margin:28px 0 0;padding:14px 16px;border:1px solid var(--line);border-radius:10px;font-family:var(--f-ui);font-size:14px;color:var(--muted)}
+.chend{display:none;margin:40px 0 10px;font-family:var(--f-ui)}
+.chend button{width:100%;text-align:left;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:16px 18px;display:grid;gap:2px}
+.chend button:hover{border-color:var(--accent)}
+.chend small{color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.chend b{font-family:var(--f-read);font-weight:500;font-size:20px}
+
+/* reading mode */
+body.reading .book{grid-template-columns:260px minmax(0,1fr)}
+body.reading .text{font-size:var(--fs);line-height:1.78;max-width:36em;margin:0 auto}
+body.reading .chhead{max-width:calc(var(--fs) * 36);margin-left:auto;margin-right:auto}
+body.reading .para{display:block;margin:0 0 1em}
+body.reading .para .lab{display:none}
+body.reading .para.h .body{font-size:1.15em;margin-top:1.4em}
+body.reading .s{cursor:auto;transition:none}
+body.reading .s:hover,body.reading .s.on{background:none;box-shadow:none;color:inherit}
+body.reading .s.done{color:inherit}
+body.reading .chend{display:block;max-width:36em;margin-left:auto;margin-right:auto}
+
+/* transport bar */
+.deck{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);
+  padding:10px max(16px,env(safe-area-inset-right,0px)) calc(10px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.deckTog{display:none}
+#fixBtn[aria-pressed="true"]{background:var(--accent);color:#fff}
+body.fixing .text .s{cursor:crosshair}
+.deck .in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.now{flex:1 1 220px;min-width:0}
+.now .l1{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.now .l2{font-family:var(--f-mono);font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.now .prog{height:3px;background:var(--line);border-radius:2px;margin-top:6px;overflow:hidden}
+.now .prog i{display:block;height:100%;width:0;background:var(--accent)}
+.tx,.rx{display:flex;align-items:center;gap:4px}
+.ib{width:38px;height:38px;border-radius:50%;border:none;background:none;display:grid;place-items:center;color:var(--ink)}
+.ib:hover{background:var(--hl)}
+.ib svg{width:20px;height:20px}
+.ib.big{width:52px;height:52px;background:var(--accent);color:var(--accent-ink)}
+.ib.big:hover{background:var(--accent);filter:brightness(1.08)}
+.ib.big svg{width:24px;height:24px}
+.ib:disabled{opacity:.35;cursor:default}
+.ib.txt{width:auto;border-radius:8px;padding:0 10px;font-family:var(--f-read);font-weight:600}
+.listen-btn{border:none;background:var(--accent);color:var(--accent-ink);border-radius:999px;padding:9px 16px;font-weight:600;font-size:13px;display:inline-flex;gap:6px;align-items:center}
+.vc{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.vc select{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px;max-width:220px}
+.vc label{font-size:12px;color:var(--muted)}
+.linkish{background:none;border:none;color:var(--accent);font-size:12px;text-decoration:underline;text-underline-offset:3px;padding:2px}
+#modeSeg{flex:none}
+.vnote{font-size:11px;color:var(--warn);flex-basis:100%;text-align:right}
+.vnote:empty{display:none}
+.tips{position:fixed;z-index:30;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(var(--deck-h,90px) + 10px);width:min(420px,calc(100vw - 32px));
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 12px 40px rgb(0 0 0 / .18);padding:16px 18px;font-size:14px}
+.tips h4{margin:0 0 8px;font-family:var(--f-read);font-size:18px;font-weight:600}
+.tips ol{margin:0;padding-left:1.2em;display:grid;gap:8px}
+.tips code{font-family:var(--f-mono);font-size:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.tips .x{float:right}
+.tips p{margin:0 0 10px;color:var(--muted)}
+.tips p b{color:var(--ink)}
+.tips .pick{padding:10px 18px;font-size:14px}
+.tips .meter{margin:6px 0 10px}
+.prep{margin:10px 0 6px;font-size:13px;color:var(--muted);max-width:68ch;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.prep-row{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.prep-btns{display:flex;gap:6px;flex-wrap:wrap}
+.prep-bar{position:relative;height:6px;background:var(--line);border-radius:3px;margin-top:8px}
+.prep-bar i{display:block;height:100%;width:0;background:var(--accent);border-radius:3px;transition:width .3s}
+.prep-bar b{position:absolute;top:-4px;width:2px;height:14px;background:var(--ink);opacity:.55}
+.prep-devs{font-size:11px;margin-top:6px}
+.prep-mini{flex-basis:100%;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);min-width:0}
+.prep-mini #prepMiniText{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pm-bar{width:64px;height:5px;background:var(--line);border-radius:3px;overflow:hidden;flex:none}
+.pm-bar i{display:block;height:100%;width:0;background:var(--accent)}
+body.reading .prep-mini{display:none}
+.prep-devs:empty{display:none}
+body.reading .prep{display:none}
+#aiDiag{white-space:pre-wrap;font-family:var(--f-mono);font-size:11px;max-height:38vh;overflow:auto;margin-top:10px}
+
+@media (max-width:860px){
+  :root{--bar-h:150px}
+  .book, body.reading .book{grid-template-columns:minmax(0,1fr)}
+  aside.toc{position:static;max-height:none}
+  aside.toc.collapsed ol{display:none}
+  .tocToggle{display:inline-block;margin-top:8px}
+  .brand span{display:none}
+  .brand b{font-size:20px}
+  header.top{padding-block:8px;margin-bottom:10px}
+  .hdr-r{display:contents}
+  .brand{order:1}
+  #shelfBtn{order:2;margin-left:auto}
+  header.top::after{content:"";order:3;flex-basis:100%;height:0}
+  #langSeg{order:4} #whoSeg{order:5}
+  header.top .seg button{padding:5px 9px}
+  .drop{grid-template-columns:minmax(0,1fr)}
+  .text{font-size:18px}
+  .para{grid-template-columns:40px minmax(0,1fr)}
+  .deck .in{gap:8px 12px}
+  .now{flex-basis:100%}
+  .deckTog{display:flex;align-items:center;justify-content:center;position:absolute;top:-30px;right:max(12px,env(safe-area-inset-right,0px));
+    width:44px;height:30px;border:1px solid var(--line);border-bottom:0;border-radius:10px 10px 0 0;background:var(--surface);color:var(--muted);padding:0;cursor:pointer}
+  .deckTog svg{width:18px;height:18px;transition:transform .2s}
+  body.deckMin .deckTog svg{transform:rotate(180deg)}
+  body.deckMin .deck{padding-top:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom,0px))}
+  body.deckMin .deck .in > :not(#txCtl):not(#rxCtl){display:none!important}
+  body.deckMin #prevCh, body.deckMin #nextCh, body.deckMin #fsDown, body.deckMin #fsUp{display:none}
+  body.deckMin .deck .in{justify-content:center}
+  .vc select{max-width:150px}
+  .vnote{text-align:left}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto!important}}
+.login{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px max(16px,env(safe-area-inset-left,0px))}
+.login[hidden]{display:none}
+.login-in{max-width:380px;text-align:center;display:grid;gap:16px;justify-items:center}
+.login-mark{font-family:var(--f-read);font-size:30px;font-weight:600}
+.login-in p{margin:0;color:var(--muted);line-height:1.6}
+.login-err{color:var(--warn)!important;font-size:14px}
+.sync button{margin-left:6px;font-size:12px;padding:3px 10px}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><b>Voice of Books</b><span>PDF／EPUB 聽書・讀書</span></div>
+    <div class="hdr-r">
+      <div class="seg" id="langSeg" role="group" aria-label="Language"><button type="button" data-ui="zh" aria-pressed="true">中</button><button type="button" data-ui="ko" aria-pressed="false">한</button><button type="button" data-ui="en" aria-pressed="false">EN</button></div>
+      <div class="seg" id="whoSeg" role="group" aria-label="使用者">
+        <button type="button" data-who="ruby" aria-pressed="true">Ruby</button><button type="button" data-who="joon" aria-pressed="false">Joon</button>
+      </div>
+      <button class="ghost" id="shelfBtn" type="button" hidden>書架</button>
+    </div>
+  </header>
+
+  <section id="empty" class="drop">
+    <div>
+      <h1>把書放上書架，用聽的或用讀的。</h1>
+      <p>支援 PDF 和 EPUB。章節會自動從書的目錄抓出來；聽到哪、讀到哪都會記住，兩種模式隨時切換、接著同一個地方。</p>
+      <button class="pick" id="pickBtn" type="button">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 16V4M6 10l6-6 6 6M4 20h16"/></svg>
+        加入 PDF 或 EPUB
+      </button>
+      <input type="file" id="file" accept=".pdf,.epub,application/pdf,application/epub+zip" hidden>
+      <input type="file" id="mp3File" accept=".mp3,audio/mpeg" multiple hidden>
+      <div class="status" id="status">也可以直接把檔案拖到這個框裡。</div>
+      <div class="meter" id="meter" hidden><i id="meterBar"></i></div>
+    </div>
+    <ul class="facts">
+      <li><span class="k">01</span><div><strong>存在你們的 Google Drive</strong><span>書、有聲書和進度都存在 Google Drive，電腦和手機是同一個書架；手機上也留一份，沒網路也能聽。</span></div></li>
+      <li><span class="k">02</span><div><strong>免費語音，男女聲切換</strong><span>用裝置內建的語音朗讀；想要更自然的聲音，就匯入 make_audiobook.py 轉好的有聲書 MP3。</span></div></li>
+      <li><span class="k">03</span><div><strong>EPUB 最乾淨</strong><span>PDF 若是掃描版，偶爾會有辨識錯字；EPUB 的註腳數字會自動略過。</span></div></li>
+    </ul>
+    <div id="shelf" class="shelf" hidden></div>
+  </section>
+
+  <section id="bookView" class="book" hidden>
+    <aside class="toc" id="toc">
+      <div class="meta">
+        <h2 id="bkTitle"></h2>
+        <small id="bkFile"></small>
+        <div><button class="ghost tocToggle" id="tocToggle" type="button">顯示章節</button></div>
+      </div>
+      <ol id="chList"></ol>
+    </aside>
+    <main class="reader">
+      <div class="chhead">
+        <div><div class="eyebrow" id="chEyebrow"></div><h2 id="chTitle"></h2></div>
+        <div class="stat" id="chStat"></div>
+      </div>
+      <div class="prep" id="prepBox" hidden>
+        <div class="prep-row"><span id="prepText"></span><span class="prep-btns"><button class="ghost" id="prepBtn" type="button"></button><button class="ghost" id="prepMore" type="button" hidden>接著準備下一章</button><button class="ghost" id="dlBtn" type="button" hidden></button></span></div>
+        <div class="prep-bar"><i id="prepFill"></i><b id="prepMark" hidden></b></div>
+        <div class="prep-devs" id="prepDevs"></div>
+      </div>
+      <div class="text" id="text"></div>
+    </main>
+  </section>
+</div>
+
+
+<div class="login" id="login" hidden>
+  <div class="login-in">
+    <b class="login-mark">Voice of Books</b>
+    <p id="loginMsg">用 R&amp;J 的 Google 帳號登入。這台裝置登入一次就會記住，之後沒網路也能打開。</p>
+    <button class="primary" id="loginBtn" type="button">用 Google 登入</button>
+    <p class="login-err" id="loginErr"></p>
+  </div>
+</div>
+<div class="tips" id="tips" hidden role="dialog" aria-label="讓聲音更自然">
+  <button class="ghost x" id="tipsClose" type="button">關閉</button>
+  <h4>讓聲音更自然</h4>
+  <ol id="tipsList"></ol>
+</div>
+
+<div class="tips" id="aiPanel" hidden role="dialog" aria-label="AI 語音">
+  <button class="ghost x" id="aiClose" type="button">關閉</button>
+  <h4>AI 語音（Kokoro）</h4>
+  <p>免費的開源 AI 語音，比裝置內建的聲音自然很多。聲音在你的裝置上產生，不花 token。第一次要下載約 <b>130 MB</b>（建議用 Wi-Fi），之後就存在這台裝置上。</p>
+  <div class="meter" id="aiMeter" hidden><i id="aiBar"></i></div>
+  <p class="sync" id="aiStatus"></p>
+  <button class="pick" id="aiGo" type="button">下載並啟用</button>
+  <button class="ghost" id="aiTest" type="button">播放測試音</button>
+  <p class="sync" id="aiDiag"></p>
+</div>
+
+<div class="deck" id="deck" hidden>
+  <button class="deckTog" id="deckTog" type="button" aria-label="收起播放列" title="收起／展開"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
+  <div class="in">
+    <div class="now">
+      <div class="l1" id="nowTitle">—</div>
+      <div class="l2" id="nowSub">—</div>
+      <div class="prog"><i id="nowBar"></i></div>
+    </div>
+    <div class="seg" id="modeSeg" role="group" aria-label="模式" hidden>
+        <button type="button" data-mode="listen" aria-pressed="true">聽書</button><button type="button" data-mode="read" aria-pressed="false">閱讀</button>
+    </div>
+    <div class="tx" id="txCtl">
+      <button class="ib" id="prevCh" type="button" aria-label="上一章" title="上一章"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+      <button class="ib" id="prevS" type="button" aria-label="上一句" title="上一句 (←)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4"/></svg></button>
+      <button class="ib big" id="playBtn" type="button" aria-label="播放" title="播放／暫停 (空白鍵)"><svg id="playIcon" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4v16l13-8z"/></svg></button>
+      <button class="ib" id="nextS" type="button" aria-label="下一句" title="下一句 (→)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4"/></svg></button>
+      <button class="ib" id="nextCh" type="button" aria-label="下一章" title="下一章"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      <button class="ib" id="fixBtn" type="button" aria-label="修正對齊" title="修正對齊：點現在正在唸的句子" hidden aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-5.6-6-11a6 6 0 0 1 12 0c0 5.4-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg></button>
+    </div>
+    <div class="vc" id="vcCtl">
+      <div class="seg" role="group" aria-label="聲音">
+        <button type="button" id="gF" aria-pressed="true">女聲</button>
+        <button type="button" id="gM" aria-pressed="false">男聲</button>
+      </div>
+      <div class="seg" id="engSeg" role="group" aria-label="語音引擎">
+        <button type="button" data-eng="device" aria-pressed="true">內建</button>
+        <button type="button" data-eng="mp3" aria-pressed="false">有聲書</button>
+      </div>
+      <select id="voiceSel" aria-label="語音"></select>
+      <label for="rateSel">速度</label>
+      <select id="rateSel">
+        <option value="0.8">0.8×</option><option value="0.9">0.9×</option><option value="1" selected>1×</option>
+        <option value="1.1">1.1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option>
+        <option value="1.75">1.75×</option><option value="2">2×</option>
+      </select>
+      <div class="vnote" id="vnote"></div>
+    </div>
+    <div class="prep-mini" id="prepMini" hidden><span class="pm-bar"><i id="prepMiniFill"></i></span><span id="prepMiniText"></span><button class="ghost" id="dlMini" type="button" hidden></button><button class="ghost" id="prepMiniBtn" type="button"></button></div>
+    <div class="rx" id="rxCtl" hidden>
+      <button class="ib" id="rPrevCh" type="button" aria-label="上一章" title="上一章"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
+      <button class="ib txt" id="fsDown" type="button" aria-label="字變小" title="字變小">A−</button>
+      <button class="ib txt" id="fsUp" type="button" aria-label="字變大" title="字變大">A+</button>
+      <button class="ib" id="rNextCh" type="button" aria-label="下一章" title="下一章"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
+      <button class="listen-btn" id="listenHere" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4v16l13-8z"/></svg>從這裡開始聽</button>
+    </div>
+  </div>
+</div>
+
+<script src="lib/pdf.min.js"></script>
+<script src="lib/jszip.min.js"></script>
+<!-- Kokoro worker: runs the Kokoro-82M model (Apache-2.0) with onnxruntime-web; text normalisation adapted from kokoro-js (Apache-2.0). -->
+<script type="text/plain" id="kokoroWorker">
+import * as ort from 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.bundle.min.mjs';
+// Safari cannot iterate a ReadableStream with for-await, which the phonemizer needs while it unpacks its
+// dictionary; without this it silently never starts on iPhone. Load it only after the shim is in place.
+if (typeof ReadableStream !== 'undefined' && !ReadableStream.prototype[Symbol.asyncIterator]){
+  ReadableStream.prototype[Symbol.asyncIterator] = async function* (){
+    const r = this.getReader();
+    try{ for (;;){ const { done, value } = await r.read(); if (done) return; yield value; } }
+    finally{ r.releaseLock(); }
   };
-  $(card, '[data-stop]').onclick = () => P.el && P.el.pause();
-  setInterval(() => { if (P.el && !P.el.paused) st.textContent = '播放中 ' + P.el.currentTime.toFixed(0) + ' 秒'; }, 500);
-  P.hide = () => { if (P.el && !P.el.paused){ P.hiddenAt = Date.now(); P.posAtHide = P.el.currentTime; } };
-  P.show = () => {
-    if (P.hiddenAt == null) return;
-    const away = (Date.now() - P.hiddenAt) / 1000; P.hiddenAt = null;
-    if (away < 5) return;
-    let played = P.el.currentTime - P.posAtHide; if (played < 0) played += P.el.duration || 0;   // looped
-    const ok = played > away * 0.8;
-    res.textContent = (ok ? '✓ 螢幕暗掉時有繼續播' : '✗ 螢幕暗掉時停了') + `（離開 ${away.toFixed(0)} 秒，播了 ${played.toFixed(0)} 秒）`;
-    res.className = 'res ' + (ok ? 'ok' : 'bad');
-  };
-});
-document.addEventListener('visibilitychange', () => Object.values(players).forEach(p => document.visibilityState === 'hidden' ? p.hide() : p.show()));
+}
+const { phonemize } = await import('https://cdn.jsdelivr.net/npm/phonemizer@1.2.1/dist/phonemizer.js');
+let session = null, vocab = null, epoch = 0;
+const voices = {};
+let chain = Promise.resolve();
+function splitNum(e){
+  if (e.includes('.')) return e;
+  if (e.includes(':')){ const [a, t] = e.split(':').map(Number); return t === 0 ? `${a} o'clock` : t < 10 ? `${a} oh ${t}` : `${a} ${t}`; }
+  const a = parseInt(e.slice(0, 4), 10);
+  if (a < 1100 || a % 1000 < 10) return e;
+  const t = e.slice(0, 2), r = parseInt(e.slice(2, 4), 10), n = e.endsWith('s') ? 's' : '';
+  if (a % 1000 >= 100 && a % 1000 <= 999){ if (r === 0) return `${t} hundred${n}`; if (r < 10) return `${t} oh ${r}${n}`; }
+  return `${t} ${r}${n}`;
+}
+function flipMoney(e){
+  const a = e[0] === '$' ? 'dollar' : 'pound';
+  if (isNaN(Number(e.slice(1)))) return `${e.slice(1)} ${a}s`;
+  if (!e.includes('.')) return `${e.slice(1)} ${a}${e.slice(1) === '1' ? '' : 's'}`;
+  const [t, r] = e.slice(1).split('.'); const n = parseInt(r.padEnd(2, '0'), 10);
+  return `${t} ${a}${t === '1' ? '' : 's'} and ${n} ${e[0] === '$' ? (n === 1 ? 'cent' : 'cents') : (n === 1 ? 'penny' : 'pence')}`;
+}
+function pointNum(e){ const [a, t] = e.split('.'); return `${a} point ${t.split('').join(' ')}`; }
+const PUNCT = ';:,.!?¡¿—…"«»“”(){}[]';
+const PUNCT_RE = new RegExp(`(\\s*[${PUNCT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}]+\\s*)+`, 'g');
+function normalize(e){
+  return e.replace(/[‘’]/g, "'").replace(/«/g, '“').replace(/»/g, '”').replace(/[“”]/g, '"').replace(/\(/g, '«').replace(/\)/g, '»')
+    .replace(/、/g, ', ').replace(/。/g, '. ').replace(/！/g, '! ').replace(/，/g, ', ').replace(/：/g, ': ').replace(/；/g, '; ').replace(/？/g, '? ')
+    .replace(/[^\S \n]/g, ' ').replace(/  +/, ' ').replace(/(?<=\n) +(?=\n)/g, '')
+    .replace(/\bD[Rr]\.(?= [A-Z])/g, 'Doctor').replace(/\b(?:Mr\.|MR\.(?= [A-Z]))/g, 'Mister').replace(/\b(?:Ms\.|MS\.(?= [A-Z]))/g, 'Miss').replace(/\b(?:Mrs\.|MRS\.(?= [A-Z]))/g, 'Mrs')
+    .replace(/\betc\.(?! [A-Z])/gi, 'etc').replace(/\b(y)eah?\b/gi, "$1e'a")
+    .replace(/\d*\.\d+|\b\d{4}s?\b|(?<!:)\b(?:[1-9]|1[0-2]):[0-5]\d\b(?!:)/g, m => splitNum(m))
+    .replace(/(?<=\d),(?=\d)/g, '')
+    .replace(/[$£]\d+(?:\.\d+)?(?: hundred| thousand| (?:[bm]|tr)illion)*\b|[$£]\d+\.\d\d?\b/gi, m => flipMoney(m))
+    .replace(/\d*\.\d+/g, m => pointNum(m)).replace(/(?<=\d)-(?=\d)/g, ' to ').replace(/(?<=\d)S/g, ' S')
+    .replace(/(?<=[BCDFGHJ-NP-TV-Z])'?s\b/g, "'S").replace(/(?<=X')S\b/g, 's')
+    .replace(/(?:[A-Za-z]\.){2,} [a-z]/g, m => m.replace(/\./g, '-')).replace(/(?<=[A-Z])\.(?=[A-Z])/gi, '-').trim();
+}
+async function toPhonemes(text, lang){
+  text = normalize(text);
+  const parts = []; let last = 0;
+  for (const m of text.matchAll(PUNCT_RE)){
+    if (last < m.index) parts.push({ p:false, t:text.slice(last, m.index) });
+    if (m[0].length) parts.push({ p:true, t:m[0] });
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push({ p:false, t:text.slice(last) });
+  const code = lang === 'a' ? 'en-us' : 'en';
+  let ps = '';
+  for (const { p, t } of parts) ps += p ? t : (await phonemize(t, code)).join(' ');
+  ps = ps.replace(/kəkˈoːɹoʊ/g, 'kˈoʊkəɹoʊ').replace(/kəkˈɔːɹəʊ/g, 'kˈəʊkəɹəʊ').replace(/ʲ/g, 'j').replace(/r/g, 'ɹ').replace(/x/g, 'k').replace(/ɬ/g, 'l')
+    .replace(/(?<=[a-zɹː])(?=hˈʌndɹɪd)/g, ' ').replace(/ z(?=[;:,.!?¡¿—…"«»“” ]|$)/g, 'z');
+  if (lang === 'a') ps = ps.replace(/(?<=nˈaɪn)ti(?!ː)/g, 'di');
+  return ps.trim();
+}
+async function handle(m){
+  if (m.type === 'init'){
+    vocab = m.vocab;
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.wasmBinary = m.wasm;
+    session = await ort.InferenceSession.create(new Uint8Array(m.model), { executionProviders:['wasm'] });
+    self.postMessage({ type:'ready', id:m.id });
+  } else if (m.type === 'voice'){
+    voices[m.name] = new Float32Array(m.data);
+    self.postMessage({ type:'voice', id:m.id });
+  } else if (m.type === 'gen'){
+    if (m.epoch !== undefined && m.epoch !== epoch) throw new Error('canceled');
+    self.postMessage({ type:'step', id:m.id, step:'phon' });
+    const ps = await Promise.race([toPhonemes(m.text, m.voice[0]), new Promise((_, rej) => setTimeout(() => rej(new Error('轉音標逾時')), 30000))]);
+    self.postMessage({ type:'step', id:m.id, step:'run' });
+    let ids = [];
+    for (const ch of ps){ const v = vocab[ch]; if (v !== undefined) ids.push(v); }
+    ids = [0, ...ids.slice(0, 510), 0];
+    const vs = voices[m.voice];
+    const off = 256 * Math.min(Math.max(ids.length - 2, 0), 509);
+    const t0 = performance.now();
+    const out = await session.run({
+      input_ids: new ort.Tensor('int64', BigInt64Array.from(ids, x => BigInt(x)), [1, ids.length]),
+      style: new ort.Tensor('float32', vs.slice(off, off + 256), [1, 256]),
+      speed: new ort.Tensor('float32', new Float32Array([m.speed]), [1]),
+    });
+    const wav = new Float32Array(out.waveform.data);
+    self.postMessage({ type:'audio', id:m.id, audio:wav, ms: performance.now() - t0 }, [wav.buffer]);
+  }
+}
+self.onmessage = e => {
+  const m = e.data;
+  if (m.type === 'cancel'){ epoch = m.epoch; return; }
+  chain = chain.then(() => handle(m)).catch(err => self.postMessage({ type:'error', id:m.id, message: String((err && err.message) || err) }));
+};
+self.postMessage({ type:'loaded' });
 </script>
-</body>
+<script>
+(() => {
+'use strict';
+const $ = id => document.getElementById(id);
+/* ---------- interface language: 中文 / 한국어 / English (per person) ---------- */
+const I18N_D = {"zh":{"Windows PC":"Windows 電腦","Device":"這台裝置","男":"男","女":"女"},"ko":{"PDF／EPUB 聽書・讀書":"PDF·EPUB 듣기·읽기","模式":"모드","聽書":"듣기","閱讀":"읽기","使用者":"사용자","書架":"책장","把書放上書架，用聽的或用讀的。":"책을 책장에 올려 두고, 듣거나 읽으세요.","支援 PDF 和 EPUB。章節會自動從書的目錄抓出來；聽到哪、讀到哪都會記住，兩種模式隨時切換、接著同一個地方。":"PDF와 EPUB을 지원합니다. 챕터는 책의 목차에서 자동으로 가져오고, 어디까지 듣고 읽었는지 기억해서 두 모드를 오가도 같은 자리에서 이어집니다.","加入 PDF 或 EPUB":"PDF 또는 EPUB 추가","也可以直接把檔案拖到這個框裡。":"파일을 이 상자에 바로 끌어다 놓아도 됩니다.","存在你的 Claude 帳號裡":"Claude 계정에 저장","書和進度跟著帳號走，電腦、iPhone 打開都是同一個書架，關掉 app 也不會不見。":"책과 진행 상황은 계정에 저장되어 컴퓨터와 iPhone에서 같은 책장이 보이고, 앱을 닫아도 사라지지 않습니다.","免費語音，男女聲切換":"무료 음성, 남녀 목소리 전환","用裝置內建的語音朗讀，不花 token。聲音不自然的話，播放列有「讓聲音更自然」的設定步驟。":"기기에 내장된 음성으로 읽어서 토큰을 쓰지 않습니다. 목소리가 어색하면 재생 막대의 「더 자연스러운 목소리」에서 설정 방법을 확인하세요.","EPUB 最乾淨":"EPUB이 가장 깔끔합니다","PDF 若是掃描版，偶爾會有辨識錯字；EPUB 的註腳數字會自動略過。":"스캔한 PDF는 가끔 인식 오류가 있습니다. EPUB은 각주 번호를 자동으로 건너뜁니다.","顯示章節":"챕터 보기","收起章節":"챕터 접기","接著準備下一章":"다음 챕터도 준비","讓聲音更自然":"더 자연스러운 목소리","關閉":"닫기","AI 語音":"AI 음성","AI 語音（Kokoro）":"AI 음성 (Kokoro)","免費的開源 AI 語音，比裝置內建的聲音自然很多。聲音在你的裝置上產生，不花 token。第一次要下載約":"무료 오픈소스 AI 음성으로, 기기 내장 음성보다 훨씬 자연스럽습니다. 음성은 기기에서 만들어지며 토큰을 쓰지 않습니다. 처음 한 번 약","（建議用 Wi-Fi），之後就存在這台裝置上。":"를 내려받아야 하며(Wi-Fi 권장), 이후에는 이 기기에 저장됩니다.","下載並啟用":"다운로드하고 사용","播放測試音":"테스트음 재생","上一章":"이전 챕터","上一句":"이전 문장","上一句 (←)":"이전 문장 (←)","播放":"재생","暫停":"일시정지","播放／暫停 (空白鍵)":"재생/일시정지 (스페이스)","下一句":"다음 문장","下一句 (→)":"다음 문장 (→)","下一章":"다음 챕터","聲音":"목소리","女聲":"여성","男聲":"남성","語音引擎":"음성 엔진","內建":"내장","語音":"음성","速度":"속도","字變小":"글자 작게","字變大":"글자 크게","從這裡開始聽":"여기서부터 듣기","已同步到你的 Claude 帳號，電腦和手機都看得到。":"Claude 계정에 동기화되어 컴퓨터와 휴대폰에서 모두 보입니다.","進度已同步；這個視窗不能上傳書，新書只會存在這台裝置。":"진행 상황은 동기화됩니다. 이 창에서는 책을 업로드할 수 없어 새 책은 이 기기에만 저장됩니다.","目前沒有連上帳號同步，書和進度先存在這台裝置。":"지금은 계정과 동기화되지 않아 책과 진행 상황이 이 기기에 저장됩니다.","開頭":"시작","第 {0}–{1} 頁":"{0}–{1}쪽","第 {0} 部分":"{0}부","AI 語音目前只念英文書，這本會用內建語音。":"AI 음성은 지금은 영어 책만 읽습니다. 이 책은 내장 음성으로 읽어요.","AI 語音準備中…":"AI 음성 준비 중…","AI 語音沒有載入成功，再按一次「AI 語音」重試。":"AI 음성을 불러오지 못했습니다. 「AI 음성」을 다시 눌러 주세요.","按播放或「AI 語音」來下載。":"재생 또는 「AI 음성」을 눌러 다운로드하세요.","這個瀏覽器不支援朗讀，請改用 Edge、Chrome 或 Safari。":"이 브라우저는 읽어 주기를 지원하지 않습니다. Edge, Chrome 또는 Safari를 사용하세요.","語音清單載入中…":"음성 목록을 불러오는 중…","這台裝置找不到內建{0}聲，先用調整音高模擬。":"이 기기에 내장 {0} 음성이 없어 음높이를 조절해 비슷하게 냅니다.","男":"남성","女":"여성","<b>最自然：</b>播放列切到「AI 語音」。第一次在這台裝置下載約 130 MB，之後就不用再下載；iPhone、電腦都能用。":"<b>가장 자연스러움:</b> 재생 막대에서 「AI 음성」으로 바꾸세요. 이 기기에서 처음 한 번 약 130 MB를 내려받으면 그다음부터는 필요 없습니다. iPhone과 컴퓨터 모두 됩니다.","這台裝置已經有高品質語音（名稱帶 Natural、Premium 或 Enhanced），選單裡排在最前面，選它就好。":"이 기기에 고품질 음성(이름에 Natural, Premium, Enhanced 포함)이 있습니다. 목록 맨 위에 있으니 그것을 고르세요.","<b>最推薦：</b>用 <b>Microsoft Edge</b> 瀏覽器登入 claude.ai，從左側欄的釘選打開 Voice of Books。Edge 有免費的 Natural 語音（例如 Ava、Emma、Andrew、Brian），最接近真人；書架和進度會自動跟過去。":"<b>추천:</b> <b>Microsoft Edge</b> 브라우저로 claude.ai에 로그인해 왼쪽 사이드바에 고정된 Voice of Books를 여세요. Edge에는 무료 Natural 음성(Ava, Emma, Andrew, Brian 등)이 있어 사람 목소리에 가장 가깝고, 책장과 진행 상황도 그대로 따라옵니다.","Mac 上也可以下載高品質聲音：<code>System Settings → Accessibility → Spoken Content → System Voice</code> 旁的 ⓘ 或「Manage Voices…」→ English，下載標 Premium 或 Enhanced 的聲音（例如 Ava、Zoe、Evan），再重新打開這頁。中文介面是「系統設定 → 輔助使用 → 朗讀內容」。":"Mac에서도 고품질 음성을 받을 수 있습니다: <code>System Settings → Accessibility → Spoken Content → System Voice</code> 옆 ⓘ 또는 「Manage Voices…」→ English에서 Premium/Enhanced 음성(Ava, Zoe, Evan 등)을 내려받고 이 페이지를 다시 여세요. 한국어 화면에서는 「시스템 설정 → 손쉬운 사용 → 콘텐츠 읽어주기」입니다.","這個視窗目前看得到 {0} 個英文聲音，其中高品質 {1} 個。如果下載了卻是 0，改用 Safari 打開這頁（可以「加入主畫面」），Safari 通常看得到更多聲音。":"이 창에서 보이는 영어 음성은 {0}개, 그중 고품질은 {1}개입니다. 내려받았는데 0이라면 Safari로 이 페이지를 열어 보세요(「홈 화면에 추가」 가능). Safari에서 더 많은 음성이 보이는 경우가 많습니다.","iPhone：<code>Settings → Accessibility → Read & Speak → Voices → English</code>，下載 Ava、Evan、Nathan 等 Enhanced 或 Premium 版本，完全關掉 Claude app 再打開。":"iPhone: <code>Settings → Accessibility → Read & Speak → Voices → English</code>에서 Ava, Evan, Nathan 등의 Enhanced/Premium 버전을 내려받은 뒤 Claude 앱을 완전히 닫았다가 다시 여세요.","Android：到「設定 → 協助工具 → 文字轉語音」安裝 Google 語音引擎的高品質英文聲音。":"Android: 「설정 → 접근성 → 텍스트 음성 변환」에서 Google 음성 엔진의 고품질 영어 음성을 설치하세요.","速度在 0.9× 到 1.1× 之間通常最自然；太快或太慢會更像機器。":"속도는 0.9×에서 1.1× 사이가 가장 자연스럽습니다. 너무 빠르거나 느리면 기계처럼 들립니다.","美式":"미국식","英式":"영국식","Nicole（輕聲）":"Nicole (속삭임)"," e{0} {1}字":" e{0} {1}자","  #{0} {1}":"  #{0} {1}"," 算 {0}s → 聲音 {1}s":" 계산 {0}s → 음성 {1}s","轉音標":"발음 변환","計算聲音":"음성 계산","下載失敗（{0}）":"다운로드 실패 ({0})","模型檔不完整":"모델 파일이 불완전합니다","逾時":"시간 초과","無法啟動":"시작할 수 없음","語音引擎載入失敗：":"음성 엔진을 불러오지 못했습니다: ","聲音檔下載失敗":"음성 파일 다운로드 실패","Windows PC":"Windows PC","Device":"이 기기","上傳到帳號失敗（":"계정에 업로드하지 못했습니다(","），先存在這台裝置":"). 일단 이 기기에 저장합니다","下載聲音失敗":"음성을 내려받지 못했습니다","這段聲音只存在準備它的那台裝置":"이 음성은 준비한 기기에만 있습니다","另一台裝置正在準備這一章":"다른 기기가 이 챕터를 준비하고 있습니다","✓ 這一章的 AI 語音（{0}）已準備好，存在帳號裡，任何裝置都能直接聽。":"✓ 이 챕터의 AI 음성({0})이 준비되어 계정에 저장되었습니다. 어떤 기기에서든 바로 들을 수 있습니다.","準備中 {0}% · {1}速度 {2}":"준비 중 {0}% · {1} 속도 {2}","{0} 倍":"{0}배","測量中":"측정 중"," · 還要約 {0}":" · 약 {0} 남음"," · 現在開始聽，可以一路聽完不中斷":" · 지금 들으면 끊김 없이 끝까지 들을 수 있습니다"," · 到 {0}%（直線處）開始聽就不會中斷":" · {0}%(세로선)에 도달하면 끊김 없이 들을 수 있습니다","暫停準備":"준비 멈춤","排隊準備中 · 已完成 {0}%":"준비 대기 중 · {0}% 완료","取消":"취소","另一台裝置正在準備 · {0}%":"다른 기기에서 준비 중 · {0}%","重新整理":"새로 고침","已準備 {0}%。":"{0}% 준비됨. ","AI 語音（{0}）要先準備才能聽，聲音約 {1}。":"AI 음성({0})은 먼저 준비해야 들을 수 있습니다. 길이 약 {1}.","準備這一章":"이 챕터 준비","在這台裝置準備":"이 기기에서 준비"," · 自動準備下一章已暫停":" · 다음 챕터 자동 준비가 멈춰 있습니다","各裝置速度：":"기기별 속도: ","{0} {1} 倍":"{0} {1}배","這一句還在準備，等了 {0} 秒…":"이 문장은 아직 준비 중입니다. {0}초 기다림…","這一章還沒準備好，按上方的「在這台裝置準備」，或用另一台裝置準備。":"이 챕터는 아직 준비되지 않았습니다. 위의 「이 기기에서 준비」를 누르거나 다른 기기에서 준비하세요.","聲音被擋住了，請再按一次播放。":"소리가 막혔습니다. 재생을 한 번 더 눌러 주세요.","再試一次":"다시 시도","已就緒，按播放後會顯示這台裝置的速度。":"준비되었습니다. 재생하면 이 기기의 속도가 표시됩니다."," 最近一句：花 {0} 秒產生 {1} 秒的聲音。":" 최근 문장: {0}초 걸려 {1}초 분량의 음성을 만들었습니다."," 各裝置速度：":" 기기별 속도: ","沒有成功：":"실패: ","已就緒。這台裝置產生聲音的速度約是播放速度的 {0} 倍":"준비되었습니다. 이 기기의 음성 생성 속도는 재생 속도의 약 {0}배","，句子之間可能會停頓；速度調慢一點會比較順。":"라서 문장 사이에 멈춤이 있을 수 있습니다. 챕터를 미리 준비하면 끊김 없이 들을 수 있습니다.","，可以順順地念。":"라서 끊김 없이 읽을 수 있습니다.","下載中 {0}%（約 130 MB）":"다운로드 중 {0}% (약 130 MB)","準備語音引擎…":"음성 엔진 준비 중…","「{0}」念不出來，已經換成其他聲音。":"「{0}」로는 읽을 수 없어 다른 목소리로 바꿨습니다.","全書念完了。":"책을 끝까지 다 읽었습니다.","正文念完了。後面是「{0}」，需要的話可以在章節列點選繼續。":"본문을 다 읽었습니다. 다음은 「{0}」이며, 필요하면 챕터 목록에서 눌러 이어 들으세요.","剛剛":"방금","{0} 分鐘前":"{0}분 전","{0} 小時前":"{0}시간 전","{0} 天前":"{0}일 전","<h3>{0} 的書架</h3><p class=\"hint\"><span id=\"syncState\" class=\"sync\"></span></p>":"<h3>{0}의 책장</h3><p class=\"hint\"><span id=\"syncState\" class=\"sync\"></span></p>","<p class=\"hint\">還沒有書。按上面的按鈕加入第一本，兩個人共用同一個書架，進度各自記。</p>":"<p class=\"hint\">아직 책이 없습니다. 위 버튼으로 첫 책을 추가하세요. 두 사람이 같은 책장을 쓰고, 진행 상황은 각자 기록됩니다.</p>","<span class=\"chip ok\">已同步</span>":"<span class=\"chip ok\">동기화됨</span>","<span class=\"chip loc\">只在這台裝置</span>":"<span class=\"chip loc\">이 기기에만</span>","{0} 到「{1}」 · {2}":"{0}: 「{1}」까지 · {2}","還沒開始":"아직 시작 안 함","<button type=\"button\" class=\"open\"><span class=\"bt\">{0}</span><span class=\"bm\">{1}{2} · {3}</span></button><button type=\"button\" class=\"ghost rm\">移除</button>":"<button type=\"button\" class=\"open\"><span class=\"bt\">{0}</span><span class=\"bm\">{1}{2} · {3}</span></button><button type=\"button\" class=\"ghost rm\">삭제</button>","確定移除？":"정말 삭제할까요?","移除":"삭제","附錄":"부록","前言":"앞부분","準備中":"준비 중","排隊":"대기","第 {0} / {1} 節":"{0} / {1} 섹션"," · 第 {0}–{1} 頁":" · {0}–{1}쪽","<div class=\"loading\">這一節沒有可朗讀的文字（可能是圖片或掃描頁）。</div>":"<div class=\"loading\">이 섹션에는 읽을 수 있는 글이 없습니다(그림이나 스캔 페이지일 수 있음).</div>","<div class=\"chend\"><button type=\"button\" id=\"chendBtn\"><small>下一章</small><b>{0}</b></button></div>":"<div class=\"chend\"><button type=\"button\" id=\"chendBtn\"><small>다음 챕터</small><b>{0}</b></button></div>","{0} 小時 {1} 分":"{0}시간 {1}분","{0} 分鐘":"{0}분","讀到 {0}%{1} · 本章還要約 {2}":"{0}% 읽음{1} · 이 챕터 약 {2} 남음","第 {0} / {1} 句{2} · 本章剩約 {3}":"{0} / {1} 문장{2} · 이 챕터 약 {3} 남음","{0} 句<br>聽約 {1}":"{0}문장<br>듣기 약 {1}","正在打開「{0}」…":"「{0}」 여는 중…","找不到這本書的內容。請重新加入一次檔案，進度會保留。":"이 책의 내용을 찾을 수 없습니다. 파일을 다시 추가해 주세요. 진행 상황은 유지됩니다.","{0} · {1} · {2} 節":"{0} · {1} · {2}개 섹션","請選擇 .pdf 或 .epub 檔案。":".pdf 또는 .epub 파일을 선택하세요.","正在整理「{0}」…":"「{0}」 정리 중…","正在整理 PDF：第 {0} / {1} 頁…":"PDF 정리 중: {0} / {1}쪽…","正在存到你的 Claude 帳號…":"Claude 계정에 저장하는 중…","這本書暫時只存在這台裝置，下次打開時會再試著同步。":"이 책은 일단 이 기기에만 저장되었습니다. 다음에 열 때 다시 동기화를 시도합니다.","這個 EPUB 打不開，可能有 DRM 加密或格式損壞。":"이 EPUB을 열 수 없습니다. DRM 보호가 있거나 파일이 손상되었을 수 있습니다.","這個 PDF 打不開，可能有密碼保護或檔案損壞。":"이 PDF를 열 수 없습니다. 암호가 걸려 있거나 파일이 손상되었을 수 있습니다.","診斷：":"진단: ","引擎 ":"엔진 ","播放器 ":"재생기 ","未啟動":"시작 안 됨","靜音鍵設定 ":"무음 스위치 설정 ","有":"있음","不支援":"지원 안 함","最近一句音量 {0}、長 {1} 秒、花 {2} 秒":"최근 문장 음량 {0}, 길이 {1}초, 걸린 시간 {2}초","還沒產生過":"아직 생성 안 함","測試音失敗：":"테스트음 실패: ","正在連到你的帳號…":"계정에 연결하는 중…"},"en":{"PDF／EPUB 聽書・讀書":"Listen to and read PDF & EPUB","模式":"Mode","聽書":"Listen","閱讀":"Read","使用者":"Reader","書架":"Bookshelf","把書放上書架，用聽的或用讀的。":"Put a book on the shelf, then listen or read.","支援 PDF 和 EPUB。章節會自動從書的目錄抓出來；聽到哪、讀到哪都會記住，兩種模式隨時切換、接著同一個地方。":"Works with PDF and EPUB. Chapters come from the book’s own table of contents, and your place is remembered, so you can switch between listening and reading and pick up at the same spot.","加入 PDF 或 EPUB":"Add a PDF or EPUB","也可以直接把檔案拖到這個框裡。":"You can also drag a file into this box.","存在你的 Claude 帳號裡":"Saved to your Claude account","書和進度跟著帳號走，電腦、iPhone 打開都是同一個書架，關掉 app 也不會不見。":"Books and progress follow your account: the same shelf on your computer and iPhone, and nothing is lost when you close the app.","免費語音，男女聲切換":"Free voices, female or male","用裝置內建的語音朗讀，不花 token。聲音不自然的話，播放列有「讓聲音更自然」的設定步驟。":"Reads with your device’s built-in voices, so it uses no tokens. If the voice sounds robotic, the player bar has “More natural voice” with setup steps.","EPUB 最乾淨":"EPUB reads best","PDF 若是掃描版，偶爾會有辨識錯字；EPUB 的註腳數字會自動略過。":"Scanned PDFs can have recognition errors; EPUB footnote numbers are skipped automatically.","顯示章節":"Show chapters","收起章節":"Hide chapters","接著準備下一章":"Prepare the next chapter too","讓聲音更自然":"More natural voice","關閉":"Close","AI 語音":"AI voice","AI 語音（Kokoro）":"AI voice (Kokoro)","免費的開源 AI 語音，比裝置內建的聲音自然很多。聲音在你的裝置上產生，不花 token。第一次要下載約":"A free, open-source AI voice that sounds far more natural than built-in voices. The audio is made on your device and uses no tokens. The first time, it downloads about","（建議用 Wi-Fi），之後就存在這台裝置上。":"(Wi-Fi recommended); after that it stays on this device.","下載並啟用":"Download and turn on","播放測試音":"Play test tone","上一章":"Previous chapter","上一句":"Previous sentence","上一句 (←)":"Previous sentence (←)","播放":"Play","暫停":"Pause","播放／暫停 (空白鍵)":"Play/pause (Space)","下一句":"Next sentence","下一句 (→)":"Next sentence (→)","下一章":"Next chapter","聲音":"Voice","女聲":"Female","男聲":"Male","語音引擎":"Voice engine","內建":"Built-in","語音":"Voice","速度":"Speed","字變小":"Smaller text","字變大":"Larger text","從這裡開始聽":"Listen from here","已同步到你的 Claude 帳號，電腦和手機都看得到。":"Synced to your Claude account; visible on your computer and phone.","進度已同步；這個視窗不能上傳書，新書只會存在這台裝置。":"Progress is synced; this window can’t upload books, so new books stay on this device.","目前沒有連上帳號同步，書和進度先存在這台裝置。":"Not syncing with your account right now; books and progress are kept on this device.","開頭":"Beginning","第 {0}–{1} 頁":"Pages {0}–{1}","第 {0} 部分":"Part {0}","AI 語音目前只念英文書，這本會用內建語音。":"The AI voice only reads English books for now; this one uses the built-in voice.","AI 語音準備中…":"Getting the AI voice ready…","AI 語音沒有載入成功，再按一次「AI 語音」重試。":"The AI voice didn’t load. Tap “AI voice” again to retry.","按播放或「AI 語音」來下載。":"Tap play or “AI voice” to download it.","這個瀏覽器不支援朗讀，請改用 Edge、Chrome 或 Safari。":"This browser can’t read aloud. Use Edge, Chrome, or Safari.","語音清單載入中…":"Loading voices…","這台裝置找不到內建{0}聲，先用調整音高模擬。":"No built-in {0} voice on this device, so the pitch is adjusted to imitate one.","男":"male","女":"female","<b>最自然：</b>播放列切到「AI 語音」。第一次在這台裝置下載約 130 MB，之後就不用再下載；iPhone、電腦都能用。":"<b>Most natural:</b> switch the player bar to “AI voice”. It downloads about 130 MB once on this device; iPhone and computer both work.","這台裝置已經有高品質語音（名稱帶 Natural、Premium 或 Enhanced），選單裡排在最前面，選它就好。":"This device already has high-quality voices (named Natural, Premium, or Enhanced). They’re at the top of the list.","<b>最推薦：</b>用 <b>Microsoft Edge</b> 瀏覽器登入 claude.ai，從左側欄的釘選打開 Voice of Books。Edge 有免費的 Natural 語音（例如 Ava、Emma、Andrew、Brian），最接近真人；書架和進度會自動跟過去。":"<b>Recommended:</b> sign in to claude.ai in <b>Microsoft Edge</b> and open Voice of Books from the pinned item in the sidebar. Edge has free Natural voices (Ava, Emma, Andrew, Brian) that sound closest to a person, and your shelf and progress come along.","Mac 上也可以下載高品質聲音：<code>System Settings → Accessibility → Spoken Content → System Voice</code> 旁的 ⓘ 或「Manage Voices…」→ English，下載標 Premium 或 Enhanced 的聲音（例如 Ava、Zoe、Evan），再重新打開這頁。中文介面是「系統設定 → 輔助使用 → 朗讀內容」。":"On a Mac you can also download better voices: <code>System Settings → Accessibility → Spoken Content → System Voice</code>, then ⓘ or “Manage Voices…” → English, and download a Premium or Enhanced voice (such as Ava, Zoe, or Evan). Then reopen this page.","這個視窗目前看得到 {0} 個英文聲音，其中高品質 {1} 個。如果下載了卻是 0，改用 Safari 打開這頁（可以「加入主畫面」），Safari 通常看得到更多聲音。":"This window can see {0} English voices, {1} of them high quality. If you downloaded some and it says 0, open this page in Safari (you can “Add to Home Screen”); Safari usually sees more voices.","iPhone：<code>Settings → Accessibility → Read & Speak → Voices → English</code>，下載 Ava、Evan、Nathan 等 Enhanced 或 Premium 版本，完全關掉 Claude app 再打開。":"iPhone: <code>Settings → Accessibility → Read & Speak → Voices → English</code>, download an Enhanced or Premium voice such as Ava, Evan, or Nathan, then fully close and reopen the Claude app.","Android：到「設定 → 協助工具 → 文字轉語音」安裝 Google 語音引擎的高品質英文聲音。":"Android: go to Settings → Accessibility → Text-to-speech and install a high-quality English voice for the Google engine.","速度在 0.9× 到 1.1× 之間通常最自然；太快或太慢會更像機器。":"Speeds between 0.9× and 1.1× usually sound most natural; much faster or slower sounds more robotic.","美式":"US","英式":"UK","Nicole（輕聲）":"Nicole (soft)"," e{0} {1}字":" e{0} {1} chars","  #{0} {1}":"  #{0} {1}"," 算 {0}s → 聲音 {1}s":" computed {0}s → audio {1}s","轉音標":"phonemes","計算聲音":"computing audio","下載失敗（{0}）":"Download failed ({0})","模型檔不完整":"The model file is incomplete","逾時":"timed out","無法啟動":"could not start","語音引擎載入失敗：":"The voice engine didn’t load: ","聲音檔下載失敗":"Voice file download failed","Windows PC":"Windows PC","Device":"This device","上傳到帳號失敗（":"Upload to your account failed (","），先存在這台裝置":"); kept on this device for now","下載聲音失敗":"Couldn’t download the audio","這段聲音只存在準備它的那台裝置":"This audio only exists on the device that prepared it","另一台裝置正在準備這一章":"Another device is preparing this chapter","✓ 這一章的 AI 語音（{0}）已準備好，存在帳號裡，任何裝置都能直接聽。":"✓ AI audio ({0}) for this chapter is ready and saved to your account; any device can play it.","準備中 {0}% · {1}速度 {2}":"Preparing {0}% · {1} speed {2}","{0} 倍":"{0}×","測量中":"measuring"," · 還要約 {0}":" · about {0} left"," · 現在開始聽，可以一路聽完不中斷":" · start now and it will play through without pauses"," · 到 {0}%（直線處）開始聽就不會中斷":" · start at {0}% (the line) to listen without pauses","暫停準備":"Pause preparing","排隊準備中 · 已完成 {0}%":"Queued · {0}% done","取消":"Cancel","另一台裝置正在準備 · {0}%":"Another device is preparing · {0}%","重新整理":"Refresh","已準備 {0}%。":"{0}% prepared. ","AI 語音（{0}）要先準備才能聽，聲音約 {1}。":"The AI voice ({0}) has to be prepared before you can listen; about {1} of audio.","準備這一章":"Prepare this chapter","在這台裝置準備":"Prepare on this device"," · 自動準備下一章已暫停":" · auto-preparing the next chapter is paused","各裝置速度：":"Speed by device: ","{0} {1} 倍":"{0} {1}×","這一句還在準備，等了 {0} 秒…":"This sentence is still being prepared, waited {0} s…","這一章還沒準備好，按上方的「在這台裝置準備」，或用另一台裝置準備。":"This chapter isn’t prepared yet. Tap “Prepare on this device” above, or prepare it on another device.","聲音被擋住了，請再按一次播放。":"Sound was blocked. Tap play again.","再試一次":"Try again","已就緒，按播放後會顯示這台裝置的速度。":"Ready. This device’s speed shows once you start."," 最近一句：花 {0} 秒產生 {1} 秒的聲音。":" Last sentence: {0} s to make {1} s of audio."," 各裝置速度：":" Speed by device: ","沒有成功：":"Didn’t work: ","已就緒。這台裝置產生聲音的速度約是播放速度的 {0} 倍":"Ready. This device makes audio at about {0}× playback speed","，句子之間可能會停頓；速度調慢一點會比較順。":", so there may be pauses between sentences; preparing the chapter ahead avoids them.","，可以順順地念。":", fast enough to play smoothly.","下載中 {0}%（約 130 MB）":"Downloading {0}% (about 130 MB)","準備語音引擎…":"Starting the voice engine…","「{0}」念不出來，已經換成其他聲音。":"“{0}” couldn’t speak, so another voice was chosen.","全書念完了。":"That’s the end of the book.","正文念完了。後面是「{0}」，需要的話可以在章節列點選繼續。":"That’s the end of the main text. Next is “{0}”; pick it in the chapter list if you want it.","剛剛":"just now","{0} 分鐘前":"{0} min ago","{0} 小時前":"{0} h ago","{0} 天前":"{0} days ago","<h3>{0} 的書架</h3><p class=\"hint\"><span id=\"syncState\" class=\"sync\"></span></p>":"<h3>{0}’s bookshelf</h3><p class=\"hint\"><span id=\"syncState\" class=\"sync\"></span></p>","<p class=\"hint\">還沒有書。按上面的按鈕加入第一本，兩個人共用同一個書架，進度各自記。</p>":"<p class=\"hint\">No books yet. Add the first one with the button above. You both share one shelf; each of you keeps your own place.</p>","<span class=\"chip ok\">已同步</span>":"<span class=\"chip ok\">Synced</span>","<span class=\"chip loc\">只在這台裝置</span>":"<span class=\"chip loc\">This device only</span>","{0} 到「{1}」 · {2}":"{0} at “{1}” · {2}","還沒開始":"Not started","<button type=\"button\" class=\"open\"><span class=\"bt\">{0}</span><span class=\"bm\">{1}{2} · {3}</span></button><button type=\"button\" class=\"ghost rm\">移除</button>":"<button type=\"button\" class=\"open\"><span class=\"bt\">{0}</span><span class=\"bm\">{1}{2} · {3}</span></button><button type=\"button\" class=\"ghost rm\">Remove</button>","確定移除？":"Remove it?","移除":"Remove","附錄":"Appendix","前言":"Front","準備中":"Preparing","排隊":"Queued","第 {0} / {1} 節":"Section {0} of {1}"," · 第 {0}–{1} 頁":" · pages {0}–{1}","<div class=\"loading\">這一節沒有可朗讀的文字（可能是圖片或掃描頁）。</div>":"<div class=\"loading\">This section has no readable text (it may be images or scanned pages).</div>","<div class=\"chend\"><button type=\"button\" id=\"chendBtn\"><small>下一章</small><b>{0}</b></button></div>":"<div class=\"chend\"><button type=\"button\" id=\"chendBtn\"><small>Next chapter</small><b>{0}</b></button></div>","{0} 小時 {1} 分":"{0} h {1} min","{0} 分鐘":"{0} min","讀到 {0}%{1} · 本章還要約 {2}":"Read {0}%{1} · about {2} left in this chapter","第 {0} / {1} 句{2} · 本章剩約 {3}":"Sentence {0} of {1}{2} · about {3} left in this chapter","{0} 句<br>聽約 {1}":"{0} sentences<br>about {1} to listen","正在打開「{0}」…":"Opening “{0}”…","找不到這本書的內容。請重新加入一次檔案，進度會保留。":"Couldn’t find this book’s content. Add the file again; your place is kept.","{0} · {1} · {2} 節":"{0} · {1} · {2} sections","請選擇 .pdf 或 .epub 檔案。":"Choose a .pdf or .epub file.","正在整理「{0}」…":"Processing “{0}”…","正在整理 PDF：第 {0} / {1} 頁…":"Processing PDF: page {0} of {1}…","正在存到你的 Claude 帳號…":"Saving to your Claude account…","這本書暫時只存在這台裝置，下次打開時會再試著同步。":"This book is only on this device for now; it will try to sync next time.","這個 EPUB 打不開，可能有 DRM 加密或格式損壞。":"This EPUB won’t open. It may have DRM or be damaged.","這個 PDF 打不開，可能有密碼保護或檔案損壞。":"This PDF won’t open. It may be password-protected or damaged.","診斷：":"Diagnostics: ","引擎 ":"engine ","播放器 ":"player ","未啟動":"not started","靜音鍵設定 ":"silent-switch setting ","有":"yes","不支援":"not supported","最近一句音量 {0}、長 {1} 秒、花 {2} 秒":"last sentence level {0}, {1} s long, took {2} s","還沒產生過":"nothing generated yet","測試音失敗：":"Test tone failed: ","正在連到你的帳號…":"Connecting to your account…"}};
+Object.assign(I18N_D.ko, {"有聲書": "오디오북", "「{0}」對不到章節，檔名開頭請保留章節編號（例如 06）。": "「{0}」에 맞는 챕터를 찾지 못했습니다. 파일 이름 앞의 챕터 번호(예: 06)를 그대로 두세요.", "「{0}」不是可以播放的 MP3。": "「{0}」는 재생할 수 있는 MP3가 아닙니다.", "「{0}」上傳到帳號中 {1}%": "「{0}」 계정에 업로드 중 {1}%", "上傳到帳號失敗（{0}），這一章先存在這台裝置。": "계정 업로드 실패({0}). 이 챕터는 일단 이 기기에 저장합니다.", "從帳號下載有聲書 {0}%": "계정에서 오디오북 다운로드 {0}%", "這一章還沒有匯入有聲書，按上方的「匯入 MP3」。": "이 챕터는 아직 오디오북이 없습니다. 위의 「MP3 가져오기」를 누르세요.", "這個 MP3 解不開：{0}": "이 MP3를 열 수 없습니다: {0}", "有聲書 {0} / {1} · 本章剩約 {2}": "오디오북 {0} / {1} · 이 챕터 약 {2} 남음", "🎧 這一章有匯入的有聲書（{0}，{1}）": "🎧 이 챕터에 가져온 오디오북이 있습니다({0}, {1})", "已同步": "동기화됨", "只在這台裝置": "이 기기에만", "這一章還沒有匯入有聲書。用 make_audiobook.py 轉好的 MP3 可以一次選很多個，會依檔名的章節編號自動放到對的章節。": "이 챕터는 아직 오디오북이 없습니다. make_audiobook.py로 만든 MP3를 여러 개 한 번에 고르면 파일 이름의 챕터 번호대로 자동으로 들어갑니다.", "匯入 MP3": "MP3 가져오기", "這本書已匯入 {0} / {1} 節": "이 책은 {0} / {1}개 섹션을 가져왔습니다", "🎧 有聲書 {0}": "🎧 오디오북 {0}", "這一章沒有有聲書": "이 챕터에는 오디오북이 없습니다"});
+Object.assign(I18N_D.en, {"有聲書": "Audiobook", "「{0}」對不到章節，檔名開頭請保留章節編號（例如 06）。": "Couldn’t match “{0}” to a chapter. Keep the chapter number at the start of the file name (e.g. 06).", "「{0}」不是可以播放的 MP3。": "“{0}” isn’t a playable MP3.", "「{0}」上傳到帳號中 {1}%": "Uploading “{0}” to your account {1}%", "上傳到帳號失敗（{0}），這一章先存在這台裝置。": "Upload to your account failed ({0}); this chapter is kept on this device for now.", "從帳號下載有聲書 {0}%": "Downloading the audiobook from your account {0}%", "這一章還沒有匯入有聲書，按上方的「匯入 MP3」。": "No audiobook imported for this chapter yet. Tap “Import MP3” above.", "這個 MP3 解不開：{0}": "Couldn’t decode this MP3: {0}", "有聲書 {0} / {1} · 本章剩約 {2}": "Audiobook {0} / {1} · about {2} left in this chapter", "🎧 這一章有匯入的有聲書（{0}，{1}）": "🎧 This chapter has an imported audiobook ({0}, {1})", "已同步": "Synced", "只在這台裝置": "This device only", "這一章還沒有匯入有聲書。用 make_audiobook.py 轉好的 MP3 可以一次選很多個，會依檔名的章節編號自動放到對的章節。": "No audiobook imported for this chapter yet. You can pick many MP3s made with make_audiobook.py at once; each goes to its chapter by the number in its file name.", "匯入 MP3": "Import MP3", "這本書已匯入 {0} / {1} 節": "{0} of {1} sections imported for this book", "🎧 有聲書 {0}": "🎧 Audiobook {0}", "這一章沒有有聲書": "No audiobook for this chapter"});
+Object.assign(I18N_D.ko, {"對齊文字中 {0}%": "텍스트 맞추는 중 {0}%"});
+Object.assign(I18N_D.en, {"對齊文字中 {0}%": "Aligning with the text {0}%"});
+Object.assign(I18N_D.ko, {"「{0}」已經匯入過了，沒有重複上傳。": "「{0}」는 이미 가져왔습니다. 다시 업로드하지 않았습니다.", "清理沒用到的檔案": "사용하지 않는 파일 정리", "帳號空間：已用 {0} MB / {1} MB": "계정 공간: {0} MB / {1} MB 사용", "確定清理？再按一次": "정리할까요? 한 번 더 누르세요", "清理中…": "정리 중…", "清掉 {0} 個檔案，省下 {1} MB": "파일 {0}개 정리, {1} MB 확보", "沒有需要清理的檔案": "정리할 파일이 없습니다", "清理失敗：{0}": "정리 실패: {0}"});
+Object.assign(I18N_D.en, {"「{0}」已經匯入過了，沒有重複上傳。": "“{0}” was already imported, so it wasn’t uploaded again.", "清理沒用到的檔案": "Clean up unused files", "帳號空間：已用 {0} MB / {1} MB": "Account storage: {0} MB of {1} MB used", "確定清理？再按一次": "Clean up? Tap again", "清理中…": "Cleaning up…", "清掉 {0} 個檔案，省下 {1} MB": "Removed {0} files, freed {1} MB", "沒有需要清理的檔案": "Nothing to clean up", "清理失敗：{0}": "Clean-up failed: {0}"});
+Object.assign(I18N_D.ko, {"✓ 已放進「{0}」": "✓ 「{0}」에 넣었습니다"});
+Object.assign(I18N_D.en, {"✓ 已放進「{0}」": "✓ Added to “{0}”"});
+Object.assign(I18N_D.ko, {"讀取「{0}」中…": "「{0}」 읽는 중…", "「{0}」匯入失敗：{1}": "「{0}」 가져오기 실패: {1}"});
+Object.assign(I18N_D.en, {"讀取「{0}」中…": "Reading “{0}”…", "「{0}」匯入失敗：{1}": "Couldn’t import “{0}”: {1}"});
+Object.assign(I18N_D.ko, {"展開播放列": "플레이어 펼치기", "收起播放列": "플레이어 접기"});
+Object.assign(I18N_D.en, {"展開播放列": "Show player", "收起播放列": "Hide player"});
+Object.assign(I18N_D.ko, {"聽一下聲音，點現在正在唸的那一句": "소리를 듣고 지금 읽고 있는 문장을 누르세요", "已修正：這句之後會照新的位置對齊": "수정됨: 이 문장부터 새 위치로 맞춥니다", "修正對齊": "위치 맞추기"});
+Object.assign(I18N_D.en, {"聽一下聲音，點現在正在唸的那一句": "Listen, then tap the sentence being read now", "已修正：這句之後會照新的位置對齊": "Fixed: text follows the new position from here", "修正對齊": "Fix sync"});
+Object.assign(I18N_D.ko, {"確定刪掉有聲書？": "오디오북을 삭제할까요?", "刪除中…": "삭제 중…", "🎧 刪掉有聲書（{0} 章 · {1} MB）": "🎧 오디오북 삭제 ({0}장 · {1} MB)"});
+Object.assign(I18N_D.en, {"確定刪掉有聲書？": "Delete the audiobook?", "刪除中…": "Deleting…", "🎧 刪掉有聲書（{0} 章 · {1} MB）": "🎧 Delete audiobook ({0} ch · {1} MB)"});
+Object.assign(I18N_D.ko, {"這一章還沒下載到這台裝置，連上網路後才能聽。": "이 장은 아직 기기에 없어 인터넷 연결 후 들을 수 있습니다.", "✓ 已放進「{0}」；連上網路後會自動上傳到帳號。": "✓ 「{0}」에 넣었습니다. 인터넷에 연결되면 계정에 자동 업로드됩니다.", "✓ 已全部存在這台裝置，可以離線聽": "✓ 모두 이 기기에 저장됨 · 오프라인 재생 가능", "下載到這台裝置離線聽（{0}/{1} 章）": "오프라인용으로 이 기기에 다운로드 ({0}/{1}장)", "下載中 {0}/{1}…": "다운로드 중 {0}/{1}…", "有 {0} 章沒下載成功，請確認網路後再按一次。": "{0}장 다운로드 실패. 인터넷을 확인하고 다시 누르세요.", "離線中：書和進度先存在這台裝置，連上網路後會自動同步。": "오프라인: 책과 진도는 이 기기에 저장되며, 연결되면 자동 동기화됩니다."});
+Object.assign(I18N_D.en, {"這一章還沒下載到這台裝置，連上網路後才能聽。": "This chapter isn’t on this device yet; connect to listen.", "✓ 已放進「{0}」；連上網路後會自動上傳到帳號。": "✓ Added to “{0}”; it will upload to your account when you’re online.", "✓ 已全部存在這台裝置，可以離線聽": "✓ All on this device · works offline", "下載到這台裝置離線聽（{0}/{1} 章）": "Download for offline ({0}/{1} ch)", "下載中 {0}/{1}…": "Downloading {0}/{1}…", "有 {0} 章沒下載成功，請確認網路後再按一次。": "{0} chapters failed; check your connection and try again.", "離線中：書和進度先存在這台裝置，連上網路後會自動同步。": "Offline: books and progress are saved on this device and sync when you reconnect."});
+Object.assign(I18N_D.ko, {"✓ 可離線": "✓ 오프라인 가능", "⬇ 離線 {0}/{1}": "⬇ 오프라인 {0}/{1}"});
+Object.assign(I18N_D.en, {"✓ 可離線": "✓ Offline ready", "⬇ 離線 {0}/{1}": "⬇ Offline {0}/{1}"});
+Object.assign(I18N_D.ko, {"再按一次播放": "재생을 한 번 더 누르세요"});
+Object.assign(I18N_D.en, {"再按一次播放": "Tap play once more"});
+Object.assign(I18N_D.ko, {"存在你們的 Google Drive": "Google Drive에 저장", "書、有聲書和進度都存在 Google Drive，電腦和手機是同一個書架；手機上也留一份，沒網路也能聽。": "책·오디오북·진도가 Google Drive에 저장되어 컴퓨터와 휴대폰이 같은 책장을 씁니다. 휴대폰에도 사본이 있어 오프라인에서도 들을 수 있습니다.", "用裝置內建的語音朗讀；想要更自然的聲音，就匯入 make_audiobook.py 轉好的有聲書 MP3。": "기기 내장 음성으로 읽습니다. 더 자연스러운 목소리는 make_audiobook.py로 만든 오디오북 MP3를 가져오세요.", "用 R&J 的 Google 帳號登入。這台裝置登入一次就會記住，之後沒網路也能打開。": "R&J Google 계정으로 로그인하세요. 이 기기에서 한 번 로그인하면 기억되어 오프라인에서도 열 수 있습니다.", "用 Google 登入": "Google로 로그인", "已同步到 Google Drive（{0}），電腦和手機都看得到。": "Google Drive({0})에 동기화됨 · 컴퓨터와 휴대폰에서 모두 보입니다.", "暫時沒有連上 Google Drive，書和進度先存在這台裝置，連上後會自動同步。": "지금은 Google Drive에 연결되지 않았습니다. 책과 진도는 이 기기에 저장되고, 연결되면 자동 동기화됩니다.", "重新連線": "다시 연결", "正在存到 Google Drive…": "Google Drive에 저장 중…", "這個 Google 帳號不能使用 Voice of Books，請換 R&J 的帳號。": "이 Google 계정은 Voice of Books를 사용할 수 없습니다. R&J 계정으로 로그인하세요.", "登入沒有完成：{0}": "로그인이 완료되지 않았습니다: {0}", "登入沒有完成，請再試一次。": "로그인이 완료되지 않았습니다. 다시 시도하세요.", "還沒設定 Google 登入。": "Google 로그인이 아직 설정되지 않았습니다.", "第一次登入需要網路。": "처음 로그인할 때는 인터넷이 필요합니다."});
+Object.assign(I18N_D.en, {"存在你們的 Google Drive": "Kept in your Google Drive", "書、有聲書和進度都存在 Google Drive，電腦和手機是同一個書架；手機上也留一份，沒網路也能聽。": "Books, audiobooks and progress live in Google Drive, so computer and phone share one shelf; the phone keeps a copy for listening offline.", "用裝置內建的語音朗讀；想要更自然的聲音，就匯入 make_audiobook.py 轉好的有聲書 MP3。": "Reads with your device’s built-in voices; for a more natural voice, import audiobook MP3s made with make_audiobook.py.", "用 R&J 的 Google 帳號登入。這台裝置登入一次就會記住，之後沒網路也能打開。": "Sign in with the R&J Google account. This device remembers it, so the app opens even offline.", "用 Google 登入": "Sign in with Google", "已同步到 Google Drive（{0}），電腦和手機都看得到。": "Synced to Google Drive ({0}) · visible on computer and phone.", "暫時沒有連上 Google Drive，書和進度先存在這台裝置，連上後會自動同步。": "Not connected to Google Drive right now; books and progress are kept on this device and sync when connected.", "重新連線": "Reconnect", "正在存到 Google Drive…": "Saving to Google Drive…", "這個 Google 帳號不能使用 Voice of Books，請換 R&J 的帳號。": "This Google account can’t use Voice of Books. Please sign in with the R&J account.", "登入沒有完成：{0}": "Sign-in didn’t finish: {0}", "登入沒有完成，請再試一次。": "Sign-in didn’t finish. Please try again.", "還沒設定 Google 登入。": "Google sign-in isn’t set up yet.", "第一次登入需要網路。": "The first sign-in needs a connection."});
+let UI = 'zh';
+function T(k, ...a){
+  const d = I18N_D[UI]; const s = d && d[k] != null ? d[k] : k;
+  return a.length ? s.replace(/\{(\d+)\}/g, (_, i) => a[+i] == null ? '' : String(a[+i])) : s;
+}
+const I18N_NODES = [];
+(() => {
+  const han = /[\u4e00-\u9fff]/;
+  const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let n;
+  while ((n = w.nextNode())){
+    const p = n.parentElement; if (!p || /^(SCRIPT|STYLE)$/.test(p.tagName)) continue;
+    if (han.test(n.nodeValue)){ const raw = n.nodeValue; I18N_NODES.push({ n, key: raw.trim(), pre: raw.match(/^\s*/)[0], post: raw.match(/\s*$/)[0] }); }
+  }
+  document.querySelectorAll('[aria-label],[title]').forEach(el => ['aria-label', 'title'].forEach(a => {
+    const v = el.getAttribute(a); if (v && han.test(v)) I18N_NODES.push({ el, a, key: v });
+  }));
+})();
+function applyI18n(){
+  for (const x of I18N_NODES){ if (x.n) x.n.nodeValue = x.pre + T(x.key) + x.post; else x.el.setAttribute(x.a, T(x.key)); }
+  document.documentElement.lang = UI === 'zh' ? 'zh-Hant' : UI;
+  document.querySelectorAll('#langSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.ui === UI)));
+}
+
+const synth = window.speechSynthesis;
+
+/* ---------- local storage (cache; the account copy is the source of truth) ---------- */
+const ls = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+const idb = {
+  open(){ return new Promise((res, rej) => { try{
+    const r = indexedDB.open('voiceofbooks', 1);
+    r.onupgradeneeded = () => r.result.createObjectStore('files');
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  }catch(e){ rej(e); } }); },
+  async put(k, v){ try{ const db = await this.open(); await new Promise((res, rej) => { const t = db.transaction('files', 'readwrite'); t.objectStore('files').put(v, k); t.oncomplete = res; t.onerror = () => rej(t.error); }); }catch(e){} },
+  async get(k){ try{ const db = await this.open(); return await new Promise((res, rej) => { const t = db.transaction('files'); const r = t.objectStore('files').get(k); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }catch(e){ return null; } },
+  async del(k){ try{ const db = await this.open(); await new Promise(res => { const t = db.transaction('files', 'readwrite'); t.objectStore('files').delete(k); t.oncomplete = res; t.onerror = res; }); }catch(e){} },
+  async keys(prefix){ try{ const db = await this.open(); return await new Promise((res, rej) => { const r = db.transaction('files').objectStore('files').getAllKeys(IDBKeyRange.bound(prefix, prefix + '\uffff')); r.onsuccess = () => res(r.result || []); r.onerror = () => rej(r.error); }); }catch(e){ return []; } }
+};
+try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+
+/* ---------- state ---------- */
+const PROFILES = { ruby:'Ruby', joon:'Joon' };
+let WHO = ls.get('vob:who', 'ruby'); if (!PROFILES[WHO]) WHO = 'ruby';
+const defPrefs = () => ({ ui: WHO === 'joon' ? 'ko' : 'zh', gender: WHO === 'joon' ? 'male' : 'female', rate:1, voice:{}, fs:20, bad:[], engine:'device', aiVoice:{ female:'af_heart', male:'am_michael' } });
+let LIB = ls.get('vob:lib', {});                       // bookId -> {title,name,kind,lang,assetId,added}
+let PROG = ls.get('vob:prog:' + WHO, null) || { books:{}, prefs:defPrefs(), last:null, at:0 };
+let prefs = Object.assign(defPrefs(), PROG.prefs || {});
+UI = prefs.ui || UI;
+const S = { id:null, book:null, chapters:[], cache:{}, ch:0, s:0, playing:false, gen:0, lang:'en',
+  mode: ls.get('vob:mode', 'listen') === 'read' ? 'read' : 'listen' };
+
+
+/* ---------- Google sign-in and Drive (account sync) ---------- */
+const GCLIENT = '';                                         // OAuth client id (Google Cloud → Voice of Books)
+const GSCOPE = 'https://www.googleapis.com/auth/drive.file';
+// only this account may use the app (SHA-256 of the address, so it isn't written out in the public code)
+const ALLOWED = ['98acdf7b225ec8270d049e2dffe89ac67a88d905efdbc49a0d3f12e8d9e9dcbd'];
+const SILENT = 'data:audio/mpeg;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjYwLjE2LjEwMAAAAAAAAAAAAAAA//OEwAAAAAAAAAAAAEluZm8AAAAPAAAACwAABOAAOzs7Ozs7Ozs7Tk5OTk5OTk5OYmJiYmJiYmJidnZ2dnZ2dnZ2iYmJiYmJiYmJnZ2dnZ2dnZ2dsbGxsbGxsbGxxMTExMTExMTE2NjY2NjY2NjY7Ozs7Ozs7Ozs////////////AAAAAExhdmM2MC4zMQAAAAAAAAAAAAAAACQDwAAAAAAAAATgJ4flhgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//NExAAAAANIAAAAAExBTUUzLjEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExFMAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKYAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVTEFNRTMu//NExKwAAANIAAAAADEwMFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NExKwAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV//NExKwAAANIAAAAAFVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVVV';
+const G = {
+  get tok(){ return ls.get('vob:gtok', null); }, set tok(v){ ls.set('vob:gtok', v); },
+  get user(){ return ls.get('vob:guser', null); }, set user(v){ ls.set('vob:guser', v); }
+};
+const gValid = () => { const t = G.tok; return !!(t && t.exp > Date.now() + 60000); };
+async function sha256(t){ const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(t)); return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join(''); }
+function gSignIn(silent){
+  if (!GCLIENT) return;
+  const p = new URLSearchParams({ client_id: GCLIENT, redirect_uri: location.origin + location.pathname, response_type: 'token', scope: GSCOPE, include_granted_scopes: 'true', state: silent ? 'silent' : 'tap' });
+  if (silent) p.set('prompt', 'none');
+  const u = G.user; if (u && u.email) p.set('login_hint', u.email);
+  ls.set('vob:gtry', Date.now());
+  location.href = 'https://accounts.google.com/o/oauth2/v2/auth?' + p;
+}
+const gBack = (() => {               // coming back from Google's sign-in page
+  if (!/access_token=|error=/.test(location.hash)) return null;
+  const h = new URLSearchParams(location.hash.slice(1));
+  history.replaceState(null, '', location.pathname);
+  if (h.get('access_token')){ G.tok = { t: h.get('access_token'), exp: Date.now() + (+h.get('expires_in') || 3600) * 1000 }; return 'ok'; }
+  return h.get('state') === 'silent' ? 'silent-failed' : 'failed';
+})();
+async function gfetch(url, opts = {}){
+  if (!gValid()) throw Object.assign(new Error('signin'), { code: 'signin' });
+  const r = await fetch(url, Object.assign({}, opts, { headers: Object.assign({ Authorization: 'Bearer ' + G.tok.t }, opts.headers || {}) }));
+  if (r.status === 401){ G.tok = null; cloud.ready = false; renderSync(); throw Object.assign(new Error('signin'), { code: 'signin' }); }
+  if (!r.ok) throw Object.assign(new Error('Google Drive ' + r.status), { code: 'drive_' + r.status });
+  return r;
+}
+// check who signed in; anyone else is sent away
+async function gCheckUser(){
+  const r = await (await gfetch('https://www.googleapis.com/drive/v3/about?fields=user(emailAddress,displayName)')).json();
+  const email = ((r.user || {}).emailAddress || '').toLowerCase();
+  if (!ALLOWED.includes(await sha256(email))){
+    try{ await fetch('https://oauth2.googleapis.com/revoke?token=' + encodeURIComponent(G.tok.t), { method: 'POST' }); }catch(e){}
+    G.tok = null; G.user = null;
+    return false;
+  }
+  // each account keeps its own books on this device: if someone else signed in here before, start clean
+  const who = await sha256(email), prev = ls.get('vob:owner', null);
+  if (prev && prev !== who){
+    Object.keys(localStorage).filter(k => k.startsWith('vob:') && !/^vob:(gtok|gtry)$/.test(k)).forEach(k => localStorage.removeItem(k));
+    try{ indexedDB.deleteDatabase('voiceofbooks'); }catch(e){}
+    ls.set('vob:owner', who); G.user = { email, name: (r.user || {}).displayName || '' };
+    location.reload(); return true;
+  }
+  ls.set('vob:owner', who);
+  G.user = { email, name: (r.user || {}).displayName || '' };
+  return true;
+}
+const DAPI = 'https://www.googleapis.com/drive/v3/files', DUP = 'https://www.googleapis.com/upload/drive/v3/files';
+let gRoot = ls.get('vob:groot', null);
+async function gRootId(){
+  if (gRoot) return gRoot;
+  const q = encodeURIComponent("appProperties has { key='vob' and value='root' } and trashed=false");
+  const r = await (await gfetch(`${DAPI}?q=${q}&fields=files(id)`)).json();
+  if (r.files && r.files.length) gRoot = r.files[0].id;
+  else gRoot = (await (await gfetch(DAPI + '?fields=id', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: 'Voice of Books', mimeType: 'application/vnd.google-apps.folder', appProperties: { vob: 'root' } }) })).json()).id;
+  ls.set('vob:groot', gRoot);
+  return gRoot;
+}
+async function gUpload(meta, blob, fileId){
+  const root = await gRootId();
+  const m = fileId ? { name: meta.name, appProperties: meta.appProperties } : Object.assign({ parents: [root] }, meta);
+  const init = await gfetch(`${DUP}${fileId ? '/' + fileId : ''}?uploadType=resumable`, { method: fileId ? 'PATCH' : 'POST',
+    headers: { 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': blob.type || 'application/octet-stream' }, body: JSON.stringify(m) });
+  const loc = init.headers.get('Location');
+  if (!loc) throw new Error('Google Drive upload');
+  const r = await fetch(loc, { method: 'PUT', body: blob });
+  if (!r.ok) throw Object.assign(new Error('Google Drive ' + r.status), { code: 'drive_' + r.status });
+  return r.json();
+}
+async function gList(q, fields){
+  const out = []; let page = '';
+  do{
+    const r = await (await gfetch(`${DAPI}?q=${encodeURIComponent(q)}&fields=nextPageToken,files(${fields})&pageSize=1000${page ? '&pageToken=' + page : ''}`)).json();
+    out.push(...(r.files || [])); page = r.nextPageToken;
+  }while (page);
+  return out;
+}
+// small JSON documents (library, progress, audiobook chapters), one Drive file each
+const gDocIds = new Map();
+async function gFindDoc(id){
+  if (gDocIds.has(id)) return gDocIds.get(id);
+  const root = await gRootId();
+  const f = await gList(`'${root}' in parents and appProperties has { key='doc' and value='${id}' } and trashed=false`, 'id');
+  const fid = f[0] ? f[0].id : null;
+  if (fid) gDocIds.set(id, fid);
+  return fid;
+}
+async function gRead(fid){ return (await gfetch(`${DAPI}/${fid}?alt=media`)).json(); }
+function gQuery(conds){
+  return {
+    where(k, op, v){ return gQuery(conds.concat([[k, v]])); },
+    async get(){
+      const root = await gRootId();
+      const files = await gList(`'${root}' in parents and trashed=false` + conds.map(([k, v]) => ` and appProperties has { key='${k}' and value='${v}' }`).join(''), 'id,appProperties');
+      const docs = [];
+      for (let i = 0; i < files.length; i += 6){
+        docs.push(...await Promise.all(files.slice(i, i + 6).map(async f => {
+          gDocIds.set(f.appProperties.doc, f.id);
+          const d = await gRead(f.id);
+          return { id: f.appProperties.doc, data: () => d };
+        })));
+      }
+      return { docs };
+    }
+  };
+}
+const gcol = {
+  doc(id){ return {
+    async get(){ const f = await gFindDoc(id); if (!f) return { exists: false, data: () => undefined }; const d = await gRead(f); return { exists: true, id, data: () => d }; },
+    async set(body){
+      const f = await gFindDoc(id), ap = { doc: id };
+      if (body && body.kind) ap.kind = String(body.kind);
+      if (body && body.book) ap.book = String(body.book);
+      const r = await gUpload({ name: id + '.json', mimeType: 'application/json', appProperties: ap }, new Blob([JSON.stringify(body)], { type: 'application/json' }), f);
+      gDocIds.set(id, r.id);
+    },
+    async delete(){ const f = await gFindDoc(id); if (f){ await gfetch(`${DAPI}/${f}`, { method: 'DELETE' }); gDocIds.delete(id); } }
+  }; },
+  where(k, op, v){ return gQuery([[k, v]]); }
+};
+const gdb = { collection(){ return gcol; } };
+// files: books and audiobook MP3s
+const gassets = {
+  async upload(blob, opts){
+    const type = (opts && opts.type) || blob.type || 'application/octet-stream';
+    const r = await gUpload({ name: 'vob-' + Date.now() + (type === 'audio/mpeg' ? '.mp3' : type === 'application/json' ? '.json' : ''), mimeType: type, appProperties: { asset: '1' } },
+      blob.type === type ? blob : new Blob([blob], { type }), null);
+    return { id: r.id, sizeBytes: blob.size, contentType: type };
+  },
+  async delete(id){ await gfetch(`${DAPI}/${id}`, { method: 'DELETE' }); },
+  async list(){
+    const root = await gRootId();
+    const files = await gList(`'${root}' in parents and appProperties has { key='asset' and value='1' } and trashed=false`, 'id,size');
+    const q = ((await (await gfetch('https://www.googleapis.com/drive/v3/about?fields=storageQuota')).json()).storageQuota) || {};
+    return { assets: files.map(f => ({ id: f.id, sizeBytes: +f.size || 0 })), usage: { bytes: files.reduce((a, f) => a + (+f.size || 0), 0), maxBytes: +q.limit || 0 } };
+  }
+};
+const blobFetch = id => gfetch(`${DAPI}/${id}?alt=media`);
+
+/* ---------- account sync (db + assets) ---------- */
+const cloud = { db:null, uid:null, assets:null, ready:false, q:Promise.resolve(), timer:null };
+const col = () => cloud.db.collection('data/users/' + cloud.uid);
+function enqueue(fn){ cloud.q = cloud.q.then(fn).catch(e => console.warn('sync', e)); return cloud.q; }
+function withTimeout(p, ms){ return Promise.race([p, new Promise(r => setTimeout(() => r(null), ms))]); }
+function orFail(p, ms){ return Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]); }
+// what still has to reach the account (kept on the device, so it survives closing the app while offline)
+const dirty = {
+  get prog(){ return ls.get('vob:dirty:prog:' + WHO, false); }, set prog(v){ ls.set('vob:dirty:prog:' + WHO, v); },
+  get lib(){ return ls.get('vob:dirty:lib', false); }, set lib(v){ ls.set('vob:dirty:lib', v); },
+  get imp(){ return ls.get('vob:dirty:imp', []); }, set imp(v){ ls.set('vob:dirty:imp', v); }
+};
+async function initCloud(){
+  try{
+    if (!GCLIENT || !gValid() || navigator.onLine === false) return;
+    cloud.db = gdb; cloud.uid = 'me'; cloud.assets = gassets;
+    await gRootId();
+    cloud.ready = true;
+    await pullCloud();
+  }catch(e){ console.warn('cloud', e); cloud.ready = false; }
+}
+async function pullCloud(){
+  if (!cloud.ready) return;
+  const [libSnap, progSnap] = await Promise.all([col().doc('library').get(), col().doc('prog-' + WHO).get()]);
+  const remote = libSnap.exists ? (libSnap.data().books || {}) : {};
+  const merged = JSON.parse(JSON.stringify(remote));
+  for (const [k, v] of Object.entries(LIB)) if (!merged[k] && (!v.assetId || !libSnap.exists)) merged[k] = v;
+  LIB = merged; ls.set('vob:lib', LIB);
+  // books that were only on this device get uploaded to the account
+  for (const [k, v] of Object.entries(LIB)) if (!v.assetId) uploadLocal(k);
+  if (progSnap.exists) mergeProg(progSnap.data());
+}
+function mergeProg(r){
+  const books = Object.assign({}, PROG.books);
+  for (const [k, v] of Object.entries(r.books || {})) if (!books[k] || (v.at || 0) > (books[k].at || 0)) books[k] = v;
+  const newer = (r.at || 0) > (PROG.at || 0);
+  PROG = { books, prefs: newer ? (r.prefs || PROG.prefs) : PROG.prefs, last: newer ? (r.last || PROG.last) : PROG.last, at: Math.max(r.at || 0, PROG.at || 0) };
+  prefs = Object.assign(defPrefs(), PROG.prefs || {});
+  ls.set('vob:prog:' + WHO, PROG);
+}
+function pushProg(){
+  clearTimeout(cloud.timer); cloud.timer = null;
+  if (!cloud.ready) return;
+  const who = WHO, body = JSON.parse(JSON.stringify(PROG));
+  dirty.prog = true;
+  return enqueue(async () => { await orFail(col().doc('prog-' + who).set(body), 15000); if (who === WHO && body.at === PROG.at) dirty.prog = false; renderSync(); });
+}
+function scheduleSync(now){
+  if (!cloud.ready){ dirty.prog = true; return; }
+  if (now){ pushProg(); return; }
+  if (!cloud.timer) cloud.timer = setTimeout(pushProg, 4000);
+}
+function flush(){ if (cloud.timer) pushProg(); }
+function pushLib(){
+  ls.set('vob:lib', LIB); dirty.lib = true;
+  if (!cloud.ready) return Promise.resolve();
+  const books = {};
+  for (const [k, v] of Object.entries(LIB)) if (v.assetId) books[k] = v;
+  return enqueue(async () => { await orFail(col().doc('library').set({ books, at: Date.now() }), 15000); dirty.lib = false; });
+}
+async function uploadBook(id, data){
+  if (!cloud.ready || !cloud.assets) return null;
+  try{
+    const up = await cloud.assets.upload(new Blob([JSON.stringify(data)], { type:'application/json' }), { type:'application/json' });
+    return up.id;
+  }catch(e){
+    console.warn('upload', e);
+    if (e && e.code === 'store_unavailable'){
+      await new Promise(r => setTimeout(r, 1500));
+      try{ return (await cloud.assets.upload(new Blob([JSON.stringify(data)], { type:'application/json' }), { type:'application/json' })).id; }catch(e2){}
+    }
+    return null;
+  }
+}
+const uploading = new Set();
+async function uploadLocal(id){
+  if (uploading.has(id)) return; uploading.add(id);
+  const data = await idb.get('json:' + id);
+  if (data){ const aid = await uploadBook(id, data); if (aid && LIB[id]){ LIB[id].assetId = aid; await pushLib(); renderShelf(); } }
+  uploading.delete(id);
+}
+let migrating = false;
+async function impMigrate(book){
+  if (migrating) return; migrating = true;
+  try{
+    const docs = [...IMP.docs.entries()].filter(([k, d]) => d.book === book && !d.raw && (d.chunks || []).length).sort((a, b) => a[1].ch - b[1].ch);
+    for (const [key, d] of docs){
+      if (navigator.onLine === false || IMP.noRaw) break;
+      let buf = await idb.get('impf:' + key);
+      if (!buf) buf = await impFetch(key, true);
+      if (!buf) continue;
+      await impUpload(key, d, new Uint8Array(buf), d.chunks.slice());
+      if (S.id === book) IMP.busy = '';
+    }
+  }catch(e){ console.warn('migrate', e); }
+  migrating = false;
+  if (S.id === book){ renderPrep(); }
+}
+let resyncing = false;
+async function resync(){
+  if (resyncing || navigator.onLine === false) return;
+  resyncing = true;
+  try{
+    if (!cloud.ready) await initCloud();
+    else await orFail(pullCloud(), 20000);
+    if (!cloud.ready) return;
+    if (dirty.prog) pushProg();
+    if (dirty.lib) pushLib();
+    for (const key of dirty.imp){ const d = ls.get('vob:' + key, null); if (d && (d.chunks || []).length) pushImpDoc(key, d); }
+    // audiobook chapters added while offline go up now
+    if (cloud.assets){
+      for (let i = 0; i < localStorage.length; i++){
+        const k = localStorage.key(i); if (!k || !k.startsWith('vob:imp-')) continue;
+        const key = k.slice(4), d = ls.get(k, null);
+        if (!d || (d.chunks || []).length) continue;
+        const buf = await idb.get('impf:' + key); if (!buf) continue;
+        try{ await impUpload(key, d, new Uint8Array(buf), d.replaces); delete d.replaces; ls.set(k, d); }catch(e){ console.warn('resync imp', e); break; }
+      }
+    }
+    if (S.id) impLoadDocs();
+    if (cloud.assets && S.id && !IMP.noRaw) impMigrate(S.id);
+    // keep every book on the shelf on this device too, so any of them opens without a connection
+    for (const id of Object.keys(LIB)) if (LIB[id].assetId && !(await idb.get('json:' + id))) await getBookData(id);
+  }catch(e){ console.warn('resync', e); }
+  finally{ resyncing = false; renderSync(); }
+}
+window.addEventListener('online', () => { renderSync(); resync(); });
+window.addEventListener('offline', renderSync);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') resync(); });
+setInterval(() => { if (dirty.prog || dirty.lib || dirty.imp.length) resync(); }, 60000);
+function renderSync(){
+  const el = $('syncState'); if (!el) return;
+  if (navigator.onLine === false){ el.className = 'sync'; el.textContent = T('離線中：書和進度先存在這台裝置，連上網路後會自動同步。'); return; }
+  el.className = 'sync' + (cloud.ready ? ' ok' : '');
+  if (cloud.ready){ el.textContent = T('已同步到 Google Drive（{0}），電腦和手機都看得到。', (G.user || {}).email || ''); return; }
+  el.textContent = T('暫時沒有連上 Google Drive，書和進度先存在這台裝置，連上後會自動同步。');
+  if (GCLIENT && !gValid()){
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ghost'; b.textContent = T('重新連線');
+    b.onclick = () => gSignIn(false); el.appendChild(b);
+  }
+}
+
+/* ---------- text helpers ---------- */
+const FRONT = /^(cover|title page|title|copyright|contents|table of contents|tables|figures|half title|dedication|acknowledg\w*|封面|書名頁|版權|目錄)\b/i;
+const BACK  = /^(notes|endnotes|bibliography|references|reference|index|works cited|注釋|註釋|參考|索引)\b/i;
+function cleanText(t){ return String(t || '').replace(/­/g, '').replace(/[​﻿]/g, '').replace(/\s+/g, ' ').trim(); }
+const ABBR = /(?:\b(?:Mr|Mrs|Ms|Dr|St|Jr|Sr|Prof|Gen|Gov|Sen|Rep|Rev|vs|etc|No|Vol|vol|pp|p|cf|ed|eds|al|ca|Co|Inc|Ltd|Ch|ch|Fig|fig)\.|\b[A-Z]\.|\b(?:e\.g|i\.e|U\.S|U\.K|U\.N)\.)$/;
+function splitSentences(text){
+  const out = [];
+  const re = /[.!?。！？]+["”’)\]]*(?:\s+|(?=[㐀-鿿]))/g;
+  let last = 0, m;
+  while ((m = re.exec(text))){
+    const end = m.index + m[0].length;
+    const head = text.slice(Math.max(0, m.index - 6), m.index + 1);
+    const next = text[end] || '';
+    if (/\.{2,}|…/.test(m[0]) && (!next || /[a-z.,;…]/.test(next))) continue;
+    if (ABBR.test(head) && (!next || /[a-z0-9(]/.test(next) || /\b[A-Z]\.$|\b(?:Mr|Mrs|Ms|Dr|St|Prof)\.$/.test(head))) continue;
+    if (end >= text.length) break;
+    out.push(text.slice(last, end).trim()); last = end;
+  }
+  if (last < text.length) out.push(text.slice(last).trim());
+  for (let k = 0; k < out.length; k++){
+    if (!/[\p{L}\p{N}]/u.test(out[k]) && k + 1 < out.length){ out[k + 1] = out[k] + ' ' + out[k + 1]; out[k] = ''; }
+  }
+  const res = [];
+  for (const s of out){
+    if (!s || !/[\p{L}\p{N}]/u.test(s)) continue;
+    if (s.length <= 230){ res.push(s); continue; }
+    let rest = s;
+    while (rest.length > 230){
+      let cut = -1;
+      const win = rest.slice(0, 230);
+      for (const rx of [/[;:；：]\s/g, /[,，]\s?/g, /\s(?:and|but|which|that|while|because)\s/g, /\s/g]){
+        let mm, best = -1; rx.lastIndex = 0;
+        while ((mm = rx.exec(win))) if (mm.index > 60) best = mm.index + 1;
+        if (best > 0){ cut = best; break; }
+      }
+      if (cut < 0) cut = 230;
+      res.push(rest.slice(0, cut).trim()); rest = rest.slice(cut).trim();
+    }
+    if (rest) res.push(rest);
+  }
+  return res;
+}
+function guessLang(t){ const cjk = (t.match(/[㐀-鿿]/g) || []).length; return cjk > t.length * 0.2 ? 'zh' : 'en'; }
+function hash(s){ let h = 0x811c9dc5; for (let i = 0; i < s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 0x01000193); } return (h >>> 0).toString(36); }
+
+/* ---------- PDF → book ---------- */
+function pageLines(tc){
+  const lines = []; let cur = null, prev = null;
+  for (const it of tc.items){
+    if (!('str' in it)) continue;
+    const x = it.transform[4], y = it.transform[5], fs = Math.abs(it.transform[0]) || 10;
+    if (!cur || Math.abs(y - cur.y) > fs * 0.5){ cur = { y, s:'' }; lines.push(cur); prev = null; }
+    if (prev && it.str && !/\s$/.test(cur.s) && !/^\s/.test(it.str) && x - (prev.x + prev.w) > fs * 0.12) cur.s += ' ';
+    cur.s += it.str;
+    prev = { x, w: it.width || 0 };
+    if (it.hasEOL) cur = null;
+  }
+  return lines.map(l => l.s.replace(/\s+/g, ' ').trim()).filter(Boolean);
+}
+const RUNHEAD = /^(?:\d{1,4}|[ivxlcdm]{1,7})\s+\S.{0,80}$|^.{1,80}\S\s+(?:\d{1,4}|[ivxlcdm]{1,7})$|^\d{1,4}$/i;
+async function parsePdf(bytes, onProgress){
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+  const pdf = await pdfjsLib.getDocument({ data: bytes.slice(), isEvalSupported:false }).promise;
+  let title = '';
+  try { const md = await pdf.getMetadata(); title = (md.info && md.info.Title) || ''; } catch(e){}
+  let items = [];
+  try {
+    for (const o of (await pdf.getOutline()) || []){
+      try{
+        const dest = typeof o.dest === 'string' ? await pdf.getDestination(o.dest) : o.dest;
+        if (!dest || !dest[0]) continue;
+        const pi = typeof dest[0] === 'number' ? dest[0] : await pdf.getPageIndex(dest[0]);
+        items.push({ title: cleanText(o.title), start: pi });
+      }catch(e){}
+    }
+  } catch(e){}
+  items = items.filter(x => x.title).sort((a, b) => a.start - b.start);
+  const n = pdf.numPages, ranges = [];
+  if (items.length >= 2){
+    if (items[0].start > 0) items.unshift({ title:T("開頭"), start:0 });
+    items.forEach((it, i) => ranges.push({ title: it.title, start: it.start, end: i + 1 < items.length ? Math.max(it.start, items[i + 1].start - 1) : n - 1 }));
+  } else {
+    for (let p = 0; p < n; p += 10) ranges.push({ title:T("第 {0}–{1} 頁", p + 1, Math.min(n, p + 10)), start:p, end:Math.min(n, p + 10) - 1 });
+  }
+  const chapters = [];
+  for (const r of ranges){
+    const paras = [];
+    for (let p = r.start; p <= r.end; p++){
+      onProgress && onProgress(p + 1, n);
+      const page = await pdf.getPage(p + 1);
+      const lines = pageLines(await page.getTextContent());
+      if (lines.length && lines[0].length < 90 && RUNHEAD.test(lines[0])) lines.shift();
+      if (lines.length && /^\s*(?:\d{1,4}|[ivxlcdm]{1,7})\s*$/i.test(lines[lines.length - 1])) lines.pop();
+      let txt = '';
+      for (const l of lines){
+        if (/[-­]$/.test(txt) && /^[a-z]/.test(l)) txt = txt.replace(/[-­]$/, '') + l;
+        else txt += (txt ? ' ' : '') + l;
+      }
+      txt = cleanText(txt).replace(/([a-z.,;:!?"”’)])\d{1,3}(?=\s|$)/g, '$1');
+      if (txt) paras.push({ l:'p.' + (p + 1), t: txt, pg: p + 1 });
+      page.cleanup && page.cleanup();
+    }
+    chapters.push({ title: r.title, pages: [r.start + 1, r.end + 1], paras });
+  }
+  const sample = chapters.flatMap(c => c.paras).slice(0, 30).map(p => p.t).join(' ');
+  pdf.destroy && pdf.destroy();
+  return { title, lang: guessLang(sample), chapters };
+}
+
+/* ---------- EPUB → book ---------- */
+const BLOCK = 'p,h1,h2,h3,h4,h5,h6,li,blockquote,div,td,th,dt,dd,figcaption,pre,section,article,aside,tr,table,ul,ol,dl,header,footer,nav';
+function resolve(base, href){
+  const parts = base.split('/'); parts.pop();
+  for (const seg of href.split('/')){ if (seg === '..') parts.pop(); else if (seg && seg !== '.') parts.push(seg); }
+  return parts.join('/');
+}
+function parseXml(s, type){ return new DOMParser().parseFromString(s, type || 'application/xhtml+xml'); }
+function parseDoc(s){ let d = parseXml(s, 'application/xhtml+xml'); if (d.getElementsByTagName('parsererror').length) d = parseXml(s, 'text/html'); return d; }
+const EPUB_NS = 'http://www.idpf.org/2007/ops';
+async function parseEpub(bytes){
+  const zip = await JSZip.loadAsync(bytes);
+  const read = p => { const f = zip.file(decodeURIComponent(p)) || zip.file(p); return f ? f.async('string') : Promise.resolve(''); };
+  const container = parseXml(await read('META-INF/container.xml'), 'application/xml');
+  const opfPath = container.querySelector('rootfile').getAttribute('full-path');
+  const opf = parseXml(await read(opfPath), 'application/xml');
+  const title = (opf.getElementsByTagNameNS('*', 'title')[0] || {}).textContent || '';
+  const lang = (opf.getElementsByTagNameNS('*', 'language')[0] || {}).textContent || '';
+  const manifest = {}; let navHref = null, ncxHref = null;
+  for (const it of opf.getElementsByTagNameNS('*', 'item')){
+    const href = resolve(opfPath, it.getAttribute('href'));
+    manifest[it.getAttribute('id')] = href;
+    if ((it.getAttribute('properties') || '').split(/\s+/).includes('nav')) navHref = href;
+    if (/ncx/.test(it.getAttribute('media-type') || '')) ncxHref = href;
+  }
+  const spine = [...opf.getElementsByTagNameNS('*', 'itemref')].map(r => manifest[r.getAttribute('idref')]).filter(Boolean);
+  const blocks = [], marks = {};
+  for (const href of spine){
+    const doc = parseDoc(await read(href));
+    const body = doc.body || doc.getElementsByTagName('body')[0];
+    marks[href] = blocks.length;
+    if (!body) continue;
+    body.querySelectorAll('script,style,img,svg,math,.doi,[role="doc-noteref"],[role="doc-backlink"]').forEach(e => e.remove());
+    body.querySelectorAll('a').forEach(a => {
+      const t = a.getAttribute('epub:type') || a.getAttributeNS(EPUB_NS, 'type') || '';
+      if (/noteref|backlink/.test(t) || (/#/.test(a.getAttribute('href') || '') && /^\s*[\[(]?\d{1,3}[\])]?\s*$/.test(a.textContent))) a.remove();
+    });
+    body.querySelectorAll('sup').forEach(s => { if (/^\s*\d{1,3}\s*$/.test(s.textContent)) s.remove(); });
+    const walk = el => {
+      if (el.id) marks[href + '#' + el.id] = blocks.length;
+      if (!el.querySelector(BLOCK)){
+        el.querySelectorAll('[id]').forEach(x => { marks[href + '#' + x.id] = blocks.length; });
+        const t = cleanText(el.textContent);
+        if (t) blocks.push({ t, h: /^H[1-6]$/i.test(el.tagName) });
+        return;
+      }
+      for (const c of el.children) walk(c);
+    };
+    for (const c of body.children) walk(c);
+  }
+  let toc = [];
+  if (navHref){
+    const nav = parseDoc(await read(navHref));
+    const navs = [...nav.getElementsByTagName('nav')];
+    const navEl = navs.find(n => /toc/.test(n.getAttribute('epub:type') || n.getAttributeNS(EPUB_NS, 'type') || n.id || '')) || navs[0];
+    const ol = navEl && navEl.querySelector('ol');
+    if (ol) for (const li of ol.children){ const a = li.querySelector('a'); if (a) toc.push({ title: cleanText(a.textContent), href: resolve(navHref, a.getAttribute('href') || '') }); }
+  }
+  if (!toc.length && ncxHref){
+    const ncx = parseXml(await read(ncxHref), 'application/xml');
+    const map = ncx.getElementsByTagNameNS('*', 'navMap')[0];
+    if (map) for (const np of map.children){
+      if (np.localName !== 'navPoint') continue;
+      const lab = np.getElementsByTagNameNS('*', 'text')[0], ct = np.getElementsByTagNameNS('*', 'content')[0];
+      if (lab && ct) toc.push({ title: cleanText(lab.textContent), href: resolve(ncxHref, ct.getAttribute('src') || '') });
+    }
+  }
+  let starts = toc.map(t => {
+    const [file, frag] = t.href.split('#');
+    let at = frag && marks[file + '#' + frag] != null ? marks[file + '#' + frag] : marks[file];
+    if (frag && marks[file] != null && at - marks[file] <= 2) at = marks[file];
+    return { title: t.title, at };
+  }).filter(x => x.at != null).sort((a, b) => a.at - b.at);
+  starts = starts.filter((x, i) => i === 0 || x.at !== starts[i - 1].at);
+  if (!starts.length) starts = spine.map((h, i) => ({ title:T("第 {0} 部分", i + 1), at: marks[h] }));
+  if (starts[0].at > 0) starts.unshift({ title:T("開頭"), at:0 });
+  const chapters = starts.map((s, i) => {
+    const end = i + 1 < starts.length ? starts[i + 1].at : blocks.length;
+    return { title: s.title, paras: blocks.slice(s.at, end).map(b => b.h ? { l:'§', h:true, t:b.t } : { l:'¶', t:b.t }) };
+  });
+  const sample = blocks.slice(0, 60).map(b => b.t).join(' ');
+  return { title, lang: lang ? (/^zh/i.test(lang) ? 'zh' : lang.slice(0, 2).toLowerCase()) : guessLang(sample), chapters };
+}
+
+/* ---------- chapters ---------- */
+function loadChapter(i){
+  if (S.cache[i]) return S.cache[i];
+  const sents = [], out = [];
+  for (const p of (S.chapters[i].paras || [])){
+    const idx = [];
+    splitSentences(p.t).forEach(t => { idx.push(sents.length); sents.push({ t, page: p.pg }); });
+    if (idx.length) out.push({ label: p.l, h: p.h, idx });
+  }
+  const words = sents.reduce((n, s) => n + (S.lang === 'zh' ? s.t.length / 2.2 : s.t.split(/\s+/).length), 0);
+  return (S.cache[i] = { paras: out, sents, words });
+}
+
+/* ---------- voices ---------- */
+const NOVELTY = /^(albert|bad news|bahh|bells|boing|bubbles|cellos|good news|jester|organ|pipe organ|superstar|trinoids|whisper|wobble|zarvox|deranged|hysterical)\b/i;
+const ELOQ = /^(eddy|flo|grandma|grandpa|reed|rocko|sandy|shelley|junior|ralph|fred|kathy|princess|vicki|bruce|agnes)\b/i;
+const F_NAMES = /female|woman|samantha|victoria|karen|moira|tessa|fiona|susan|zira|aria|jenny|sonia|libby|natasha|clara|emma|ava|allison|serena|kate|hazel|catherine|nicky|joanna|salli|kimberly|ivy|kendra|michelle|ana\b|linda|heera|veena|kathy|princess|vicki|agnes|ellie|jane|nancy|sara|ashley|amber|cora|elizabeth|isabella|leah|maisie|mia|molly|zoe|emily|michelle|yating|hanhan|mei-?jia|sin-?ji|ting-?ting|xiaoxiao|hsiao|google us english$|google 國語|google 普通话|google 粵語/i;
+const M_NAMES = /\bmale\b|\bman\b|daniel|alex\b|fred|david|mark|george|guy|ryan|christopher|eric|brian|aaron|arthur|oliver|thomas|james|rishi|lee\b|tom\b|roger|steffan|william|andrew|liam|nathan|gordon|bruce|junior|ralph|reed|rocko|grandpa|jacob|brandon|davis|tony|connor|elliot|jason|kevin|zhiwei|yunjhe|yunxi|kangkang|danny|matthew|joey|justin|russell|ethan|evan|noah|steffan/i;
+function vGender(v){
+  const n = v.name;
+  if (/female/i.test(n)) return 'female';
+  if (/\bmale\b/i.test(n)) return 'male';
+  const m = M_NAMES.test(n), f = F_NAMES.test(n);
+  if (m && !f) return 'male';
+  if (f) return 'female';
+  return '';
+}
+const GOOD = /natural|neural|premium|enhanced|online/i;
+const vid = v => v.voiceURI || v.name;
+const vq = v => v.name + ' ' + (v.voiceURI || '');
+function vScore(v){
+  let s = 0;
+  if (/natural|neural|premium/i.test(vq(v))) s += 6;
+  if (/enhanced|online|google/i.test(vq(v))) s += 3;
+  if (/^alex$/i.test(v.name)) s += 3;
+  if (ELOQ.test(v.name)) s -= 4;
+  if (/^en-(US|GB)/i.test(v.lang)) s += 1;
+  return s;
+}
+function usable(v){ return !NOVELTY.test(v.name) && !(prefs.bad || []).includes(v.name); }
+function langVoices(){
+  const all = synth ? synth.getVoices().filter(usable) : [];
+  const want = S.lang === 'zh' ? /^(zh|cmn|yue)/i : new RegExp('^' + (S.lang || 'en').slice(0, 2), 'i');
+  const list = all.filter(v => want.test(v.lang));
+  return list.length ? list : all;
+}
+let fallbackPitch = 1;
+function buildVoiceMenu(){
+  const sel = $('voiceSel'); sel.innerHTML = '';
+  $('gF').setAttribute('aria-pressed', String(prefs.gender === 'female'));
+  $('gM').setAttribute('aria-pressed', String(prefs.gender === 'male'));
+  $('rateSel').value = String(prefs.rate);
+  fallbackPitch = 1; $('vnote').textContent = '';
+  document.querySelectorAll('#engSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.eng === (prefs.engine || 'device'))));
+  if (prefs.engine === 'ai') prefs.engine = 'mp3';   // the in-page AI voice was retired; audiobook MP3s replace it
+  sel.hidden = prefs.engine === 'mp3';
+  if (prefs.engine === 'mp3') return;
+  if (prefs.engine === 'ai'){
+    for (const v of AI_VOICES.filter(v => v.g === prefs.gender)){
+      const o = document.createElement('option'); o.value = v.id; o.textContent = T(v.name) + ' · ' + T(v.acc); sel.appendChild(o);
+    }
+    sel.value = aiVoiceId();
+    $('vnote').textContent = S.lang === 'zh' ? T("AI 語音目前只念英文書，這本會用內建語音。")
+      : AI.state === 'loading' ? T("AI 語音準備中…")
+      : AI.state === 'error' ? T("AI 語音沒有載入成功，再按一次「AI 語音」重試。")
+      : '';
+    return;
+  }
+  if (!synth){ $('vnote').textContent = T("這個瀏覽器不支援朗讀，請改用 Edge、Chrome 或 Safari。"); return; }
+  const vs = langVoices();
+  if (!vs.length){ $('vnote').textContent = T("語音清單載入中…"); return; }
+  const g = prefs.gender;
+  let list = vs.filter(v => vGender(v) === g).sort((a, b) => vScore(b) - vScore(a));
+  if (!list.length){
+    list = vs.filter(v => vGender(v) !== (g === 'female' ? 'male' : 'female')).sort((a, b) => vScore(b) - vScore(a));
+    if (!list.length) list = vs.slice().sort((a, b) => vScore(b) - vScore(a));
+    fallbackPitch = g === 'male' ? 0.72 : 1.25;
+    $('vnote').textContent = T("這台裝置找不到內建{0}聲，先用調整音高模擬。", g === 'male' ? T("男") : T("女"));
+  }
+  for (const v of list){
+    const o = document.createElement('option');
+    o.value = vid(v);
+    let label = v.name.replace(/^Microsoft\s+/, '').replace(/\s*-\s*English.*$/, '');
+    const uri = v.voiceURI || '';
+    if (/premium/i.test(uri) && !/premium/i.test(label)) label += ' (Premium)';
+    else if (/enhanced/i.test(uri) && !/enhanced/i.test(label)) label += ' (Enhanced)';
+    o.textContent = label + ` · ${v.lang}`;
+    sel.appendChild(o);
+  }
+  const saved = prefs.voice && prefs.voice[g];
+  if (saved && list.some(v => vid(v) === saved)) sel.value = saved;
+}
+function currentVoice(){ const id = $('voiceSel').value; return langVoices().find(v => vid(v) === id) || null; }
+
+/* voice tips, by device */
+function renderTips(){
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isMac = /Macintosh/.test(ua) && !isIOS;
+  const isEdge = /Edg\//.test(ua);
+  const isAndroid = /Android/.test(ua);
+  const hasGood = langVoices().some(v => GOOD.test(vq(v)));
+  const li = [];
+  if (hasGood) li.push(T("這台裝置已經有高品質語音（名稱帶 Natural、Premium 或 Enhanced），選單裡排在最前面，選它就好。"));
+  if (!isIOS && !isAndroid && !isEdge) li.push(T("<b>最推薦：</b>用 <b>Microsoft Edge</b> 瀏覽器登入 claude.ai，從左側欄的釘選打開 Voice of Books。Edge 有免費的 Natural 語音（例如 Ava、Emma、Andrew、Brian），最接近真人；書架和進度會自動跟過去。"));
+  if (isMac) li.push(T("Mac 上也可以下載高品質聲音：<code>System Settings → Accessibility → Spoken Content → System Voice</code> 旁的 ⓘ 或「Manage Voices…」→ English，下載標 Premium 或 Enhanced 的聲音（例如 Ava、Zoe、Evan），再重新打開這頁。中文介面是「系統設定 → 輔助使用 → 朗讀內容」。"));
+  if (isIOS) li.push(T("這個視窗目前看得到 {0} 個英文聲音，其中高品質 {1} 個。如果下載了卻是 0，改用 Safari 打開這頁（可以「加入主畫面」），Safari 通常看得到更多聲音。", langVoices().length, langVoices().filter(v => GOOD.test(vq(v))).length));
+  if (isIOS) li.push(T("iPhone：<code>Settings → Accessibility → Read & Speak → Voices → English</code>，下載 Ava、Evan、Nathan 等 Enhanced 或 Premium 版本，完全關掉 Claude app 再打開。"));
+  if (isAndroid) li.push(T("Android：到「設定 → 協助工具 → 文字轉語音」安裝 Google 語音引擎的高品質英文聲音。"));
+  li.push(T("速度在 0.9× 到 1.1× 之間通常最自然；太快或太慢會更像機器。"));
+  $('tipsList').innerHTML = li.map(x => `<li>${x}</li>`).join('');
+}
+
+/* ---------- AI voice (Kokoro) ---------- */
+const KOKORO_VOCAB = {"$":0,";":1,":":2,",":3,".":4,"!":5,"?":6,"—":9,"…":10,"\"":11,"(":12,")":13,"“":14,"”":15," ":16,"̃":17,"ʣ":18,"ʥ":19,"ʦ":20,"ʨ":21,"ᵝ":22,"ꭧ":23,"A":24,"I":25,"O":31,"Q":33,"S":35,"T":36,"W":39,"Y":41,"ᵊ":42,"a":43,"b":44,"c":45,"d":46,"e":47,"f":48,"h":50,"i":51,"j":52,"k":53,"l":54,"m":55,"n":56,"o":57,"p":58,"q":59,"r":60,"s":61,"t":62,"u":63,"v":64,"w":65,"x":66,"y":67,"z":68,"ɑ":69,"ɐ":70,"ɒ":71,"æ":72,"β":75,"ɔ":76,"ɕ":77,"ç":78,"ɖ":80,"ð":81,"ʤ":82,"ə":83,"ɚ":85,"ɛ":86,"ɜ":87,"ɟ":90,"ɡ":92,"ɥ":99,"ɨ":101,"ɪ":102,"ʝ":103,"ɯ":110,"ɰ":111,"ŋ":112,"ɳ":113,"ɲ":114,"ɴ":115,"ø":116,"ɸ":118,"θ":119,"œ":120,"ɹ":123,"ɾ":125,"ɻ":126,"ʁ":128,"ɽ":129,"ʂ":130,"ʃ":131,"ʈ":132,"ʧ":133,"ʊ":135,"ʋ":136,"ʌ":138,"ɣ":139,"ɤ":140,"χ":142,"ʎ":143,"ʒ":147,"ʔ":148,"ˈ":156,"ˌ":157,"ː":158,"ʰ":162,"ʲ":164,"↓":169,"→":171,"↗":172,"↘":173,"ᵻ":177};
+const AI_VOICES = [
+  { id:'af_heart', name:'Heart', g:'female', acc:'美式' },
+  { id:'af_bella', name:'Bella', g:'female', acc:'美式' },
+  { id:'af_nicole', name:'Nicole（輕聲）', g:'female', acc:'美式' },
+  { id:'bf_emma', name:'Emma', g:'female', acc:'英式' },
+  { id:'am_michael', name:'Michael', g:'male', acc:'美式' },
+  { id:'am_fenrir', name:'Fenrir', g:'male', acc:'美式' },
+  { id:'am_puck', name:'Puck', g:'male', acc:'美式' },
+  { id:'bm_george', name:'George', g:'male', acc:'英式' },
+  { id:'bm_fable', name:'Fable', g:'male', acc:'英式' },
+];
+const MODEL_PARTS = 9, MODEL_BYTES = 92361116, MODEL_B64 = 123148156, WASM_BYTES = 11246032;
+const B64T = new Uint8Array(256);
+'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split('').forEach((c, i) => { B64T[c.charCodeAt(0)] = i; });
+function b64bytes(a){
+  let n = a.length;
+  while (n > 0 && (a[n - 1] === 61 || a[n - 1] === 10 || a[n - 1] === 13 || a[n - 1] === 32)) n--;
+  const out = new Uint8Array(Math.floor(n * 3 / 4) + 3); let o = 0, i = 0;
+  for (; i + 4 <= n; i += 4){
+    const x = (B64T[a[i]] << 18) | (B64T[a[i + 1]] << 12) | (B64T[a[i + 2]] << 6) | B64T[a[i + 3]];
+    out[o++] = x >> 16; out[o++] = (x >> 8) & 255; out[o++] = x & 255;
+  }
+  const rem = n - i;
+  if (rem >= 2){ const x = (B64T[a[i]] << 18) | (B64T[a[i + 1]] << 12) | (rem === 3 ? B64T[a[i + 2]] << 6 : 0); out[o++] = x >> 16; if (rem === 3) out[o++] = (x >> 8) & 255; }
+  return out.subarray(0, o);
+}
+const AI = { state:'off', err:'', worker:null, ready:null, req:0, wait:new Map(), voices:new Set(), cache:new Map(), audio:null, url:null, unlocked:false, rtf:0, epoch:0 };
+AI.log = [];
+function alog(s){
+  AI.log.push(Math.round(performance.now() / 100) / 10 + 's ' + s);
+  if (AI.log.length > 16) AI.log.shift();
+  if (!$('aiPanel').hidden) aiDiag();
+}
+function aiCancel(){
+  AI.epoch++; AI.cache.clear(); alog('cancel → e' + AI.epoch);
+  if (AI.worker) AI.worker.postMessage({ type:'cancel', epoch:AI.epoch });
+}
+function aiPost(msg, transfer){
+  return new Promise((res, rej) => {
+    const id = ++AI.req; AI.wait.set(id, { res, rej });
+    alog(`→ ${msg.type}#${id}` + (msg.type === 'gen' ? T(" e{0} {1}字", msg.epoch, msg.text.length) : msg.type === 'voice' ? ' ' + msg.name : ''));
+    AI.worker.postMessage(Object.assign({ id }, msg), transfer || []);
+  });
+}
+function onAiMsg(e){
+  const m = e.data; if (!m || m.type === 'loaded') return;
+  if (m.type === 'step'){ AI.step = m.step; AI.stepAt = Date.now(); alog(T("  #{0} {1}", m.id, m.step === 'phon' ? T("轉音標") : T("計算聲音"))); return; }
+  AI.step = null;
+  alog(`← ${m.type}#${m.id}` + (m.audio ? T(" 算 {0}s → 聲音 {1}s", (m.ms / 1000).toFixed(1), (m.audio.length / 24000).toFixed(1)) : '') + (m.message ? ' ' + m.message : ''));
+  const w = AI.wait.get(m.id); if (!w) return;
+  AI.wait.delete(m.id);
+  if (m.type === 'error') w.rej(new Error(m.message)); else w.res(m);
+}
+async function readAll(url, onBytes){
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(T("下載失敗（{0}）", r.status));
+  if (!r.body || !r.body.getReader){ const b = new Uint8Array(await r.arrayBuffer()); onBytes(b.length); return b; }
+  const reader = r.body.getReader(), chunks = []; let n = 0;
+  for (;;){ const { done, value } = await reader.read(); if (done) break; chunks.push(value); n += value.length; onBytes(value.length); }
+  const out = new Uint8Array(n); let o = 0; for (const c of chunks){ out.set(c, o); o += c.length; }
+  return out;
+}
+async function aiLoadFiles(onp){
+  const okFlag = await idb.get('kokoro:ok');
+  if (okFlag){
+    const [model, wasm] = await Promise.all([idb.get('kokoro:model'), idb.get('kokoro:wasm')]);
+    if (model && wasm && model.byteLength === MODEL_BYTES){ onp(1); return { model, wasm }; }
+  }
+  let got = 0; const total = MODEL_B64 + WASM_BYTES;
+  const tick = n => { got += n; onp(Math.min(0.999, got / total)); };
+  const wasm = (await readAll('kokoro/ort-wasm-simd-threaded.wasm', tick)).buffer;
+  const full = new Uint8Array(MODEL_BYTES); let off = 0;
+  for (let i = 0; i < MODEL_PARTS; i++){
+    const p = b64bytes(await readAll(`kokoro/model.b64.${i}.txt`, tick));
+    if (off + p.length > MODEL_BYTES) throw new Error(T("模型檔不完整"));
+    full.set(p, off); off += p.length;
+  }
+  if (off !== MODEL_BYTES) throw new Error(T("模型檔不完整"));
+  await idb.put('kokoro:model', full.buffer); await idb.put('kokoro:wasm', wasm); await idb.put('kokoro:ok', 1);
+  onp(1);
+  return { model: full.buffer, wasm };
+}
+function aiEnsure(onp){
+  if (AI.ready) return AI.ready;
+  AI.state = 'loading'; AI.err = '';
+  AI.ready = (async () => {
+    const { model, wasm } = await aiLoadFiles(onp || (() => {}));
+    const startWorker = make => new Promise((res, rej) => {
+      let w; try{ w = make(); }catch(e){ rej(e); return; }
+      const t = setTimeout(() => { try{ w.terminate(); }catch(_){} rej(new Error(T("逾時"))); }, 60000);
+      w.onmessage = e => { if (e.data && e.data.type === 'loaded'){ clearTimeout(t); w.onmessage = onAiMsg; w.onerror = null; res(w); } };
+      w.onerror = ev => { clearTimeout(t); try{ w.terminate(); }catch(_){} rej(new Error((ev && ev.message) || T("無法啟動"))); };
+    });
+    let worker;
+    try{
+      // the engine ships with the page, so nothing loads from outside
+      worker = await startWorker(() => new Worker('kokoro/worker.mjs', { type:'module' }));
+    }catch(e1){
+      console.warn('worker file failed', e1);
+      try{
+        const src = $('kokoroWorker').textContent;
+        worker = await startWorker(() => new Worker(URL.createObjectURL(new Blob([src], { type:'text/javascript' })), { type:'module' }));
+      }catch(e2){ throw new Error(T("語音引擎載入失敗：") + e1.message + ' / ' + e2.message); }
+    }
+    AI.worker = worker;
+    await aiPost({ type:'init', vocab:KOKORO_VOCAB, model, wasm }, [model, wasm]);
+    AI.state = 'ready';
+  })().catch(e => {
+    AI.state = 'error'; AI.err = String((e && e.message) || e); AI.ready = null;
+    try{ AI.worker && AI.worker.terminate(); }catch(_){}
+    AI.worker = null; AI.voices.clear(); AI.cache.clear();
+    throw e;
+  });
+  return AI.ready;
+}
+async function aiVoice(v){
+  if (AI.voices.has(v)) return;
+  const r = await fetch('kokoro/voices/' + v + '.txt');
+  if (!r.ok) throw new Error(T("聲音檔下載失敗"));
+  const b = b64bytes(new Uint8Array(await r.arrayBuffer())).slice().buffer;
+  await aiPost({ type:'voice', name:v, data:b }, [b]);
+  AI.voices.add(v);
+}
+function aiVoiceId(){
+  const id = (prefs.aiVoice || {})[prefs.gender];
+  return AI_VOICES.some(v => v.id === id && v.g === prefs.gender) ? id : (prefs.gender === 'male' ? 'am_michael' : 'af_heart');
+}
+function aiGet(ch, s){
+  const v = aiVoiceId(), sp = prefs.rate, k = `${ch}:${s}:${v}:${sp}`;
+  if (AI.cache.has(k)) return AI.cache.get(k);
+  const sent = loadChapter(ch).sents[s];
+  if (!sent) return Promise.resolve(null);
+  const p = aiVoice(v).then(() => aiPost({ type:'gen', text:sent.t, voice:v, speed:sp, epoch:AI.epoch }))
+    .then(m => {
+      if (!m.audio || !m.audio.length) return null;
+      let sq = 0; for (let i = 0; i < m.audio.length; i++) sq += m.audio[i] * m.audio[i];
+      AI.last = { ms:m.ms, dur:m.audio.length / 24000, rms: Math.sqrt(sq / m.audio.length) };
+      AI.rtf = AI.last.dur / Math.max(0.001, m.ms / 1000);
+      if (!$('aiPanel').hidden) renderAiPanel();
+      return m.audio;
+    });
+  AI.cache.set(k, p);
+  p.catch(() => { if (AI.cache.get(k) === p) AI.cache.delete(k); });
+  while (AI.cache.size > 16) AI.cache.delete(AI.cache.keys().next().value);
+  return p;
+}
+function toWav(f32, rate){
+  rate = rate || 24000;
+  const n = f32.length, buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true);
+  v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++){ const x = Math.max(-1, Math.min(1, f32[i])); v.setInt16(44 + i * 2, x < 0 ? x * 0x8000 : x * 0x7fff, true); }
+  return new Blob([buf], { type:'audio/wav' });
+}
+function aiCtx(){
+  if (!AI.ctx){ const C = window.AudioContext || window.webkitAudioContext; AI.ctx = new C(); }
+  return AI.ctx;
+}
+function aiUnlock(){
+  // runs inside the tap: iPhone only lets sound start from a tap; 'playback' keeps it audible with the silent switch on
+  try{ if (navigator.audioSession) navigator.audioSession.type = 'playback'; }catch(e){}
+  try{
+    const c = aiCtx();
+    if (c.state !== 'running') c.resume();
+    const b = c.createBuffer(1, 240, 24000), s = c.createBufferSource();
+    s.buffer = b; s.connect(c.destination); s.start();
+  }catch(e){}
+}
+function aiStop(){
+  if (AI.src){ try{ AI.src.onended = null; AI.src.stop(); }catch(e){} AI.src = null; }
+}
+/* ---------- prepared AI audio: computed chapter by chapter on one device, saved to the account,
+   playable on any device. Shared between Ruby and Joon (keyed by book, chapter, voice). ---------- */
+const CHUNK = 16;
+const DEV = (() => { let d = ls.get('vob:dev', null); if (!d){ d = 'd' + Math.random().toString(36).slice(2, 10); ls.set('vob:dev', d); } return d; })();
+const DEV_NAME = (() => {
+  const u = navigator.userAgent;
+  if (/iPhone/.test(u)) return 'iPhone';
+  if (/iPad/.test(u) || (/Macintosh/.test(u) && navigator.maxTouchPoints > 1)) return 'iPad';
+  if (/Android/.test(u)) return 'Android';
+  if (/Windows/.test(u)) return 'Windows PC';
+  if (/Macintosh/.test(u)) return 'Mac';
+  return 'Device';
+})();
+const PREP = { docs:new Map(), mem:new Map(), chunks:new Map(), jobs:[], job:null, devices:{}, rtf:0, lastErr:'', after:null, autoOff:false, autoTried:new Set(), usedMark:'' };
+const KEEP_CHAPTERS = 5;
+const audKey = (book, ch, voice) => `aud-${book}-${ch}-${voice}`;
+function b64(u8){ let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
+function unb64(str){ return b64bytes(new TextEncoder().encode(str)).slice(); }
+function encodeMp3(f32){
+  const enc = new lamejs.Mp3Encoder(1, 24000, 48);
+  const pcm = new Int16Array(f32.length);
+  for (let i = 0; i < f32.length; i++){ const x = Math.max(-1, Math.min(1, f32[i])); pcm[i] = x < 0 ? x * 0x8000 : x * 0x7fff; }
+  const parts = []; let n = 0;
+  for (let i = 0; i < pcm.length; i += 1152){ const b = enc.encodeBuffer(pcm.subarray(i, i + 1152)); if (b.length){ parts.push(b); n += b.length; } }
+  const e = enc.flush(); if (e.length){ parts.push(e); n += e.length; }
+  const out = new Uint8Array(n); let o = 0; for (const p of parts){ out.set(p, o); o += p.length; }
+  return out;
+}
+function covered(doc){
+  const t = doc.total || 0, c = new Uint8Array(t);
+  for (const k of doc.chunks || []) for (let i = k.from; i < k.from + k.n && i < t; i++) c[i] = 1;
+  return c;
+}
+function prepCount(key){
+  const doc = PREP.docs.get(key), mem = PREP.mem.get(key);
+  const total = (doc && doc.total) || (mem && mem.total) || 0;
+  if (!total) return { done:0, total:0 };
+  const c = doc ? covered(doc) : new Uint8Array(total);
+  if (mem) mem.sents.forEach((v, i) => { if (v && i < total) c[i] = 1; });
+  let n = 0; for (const x of c) n += x;
+  return { done:n, total };
+}
+async function prepLoadDocs(){
+  if (!S.id) return;
+  const book = S.id, v = aiVoiceId();
+  for (let ch = 0; ch < S.chapters.length; ch++){
+    const k = audKey(book, ch, v), l = ls.get('vob:' + k, null);
+    if (l && !PREP.docs.has(k)) PREP.docs.set(k, l);
+  }
+  if (cloud.ready){
+    try{
+      const snap = await col().where('book', '==', book).where('voice', '==', v).get();
+      snap.docs.forEach(d => {
+        const data = JSON.parse(JSON.stringify(d.data())), cur = PREP.docs.get(d.id);
+        if (!cur || (data.chunks || []).length >= (cur.chunks || []).length) PREP.docs.set(d.id, data);
+      });
+    }catch(e){ console.warn('prep docs', e); }
+    try{ const ds = await col().doc('devices').get(); if (ds.exists) PREP.devices = JSON.parse(JSON.stringify(ds.data())); }catch(e){}
+  }
+  await prepRestore(book, v);
+  renderToc(); renderPrep();
+}
+async function prepRestore(book, v){
+  const keys = await idb.keys('audp:aud-' + book + '-');
+  for (const k of keys){
+    const parts = String(k).split(':'), i = +parts.pop(), key = parts.slice(1).join(':');
+    if (!key.endsWith('-' + v)) continue;
+    const ch = +key.slice(('aud-' + book + '-').length).split('-')[0];
+    if (!(ch >= 0 && ch < S.chapters.length)) continue;
+    const mem = PREP.mem.get(key) || { total: loadChapter(ch).sents.length, sents: [] };
+    if (!mem.sents[i]){ const b = await idb.get(k); if (b) mem.sents[i] = new Uint8Array(b); }
+    PREP.mem.set(key, mem);
+  }
+}
+async function prepSaveDoc(key, doc){
+  ls.set('vob:' + key, doc);
+  if (cloud.ready){ const body = JSON.parse(JSON.stringify(doc)); await enqueue(() => col().doc(key).set(body)); }
+}
+async function prepStoreChunk(key, from, mp3s){
+  const body = { v:1, from, mp3: mp3s.map(b64) };
+  await idb.put('audc:' + key + ':' + from, body);
+  let a = null;
+  if (cloud.ready && cloud.assets){
+    try{ a = (await cloud.assets.upload(new Blob([JSON.stringify(body)], { type:'application/json' }), { type:'application/json' })).id; PREP.lastErr = ''; }
+    catch(e){ console.warn('upload', e); PREP.lastErr = T("上傳到帳號失敗（") + (e.code || e.message) + T("），先存在這台裝置"); }
+  }
+  return { from, n: mp3s.length, a };
+}
+function prepLoadChunk(key, c){
+  const ck = key + ':' + c.from;
+  if (PREP.chunks.has(ck)) return PREP.chunks.get(ck);
+  const p = (async () => {
+    let body = await idb.get('audc:' + ck);
+    if (!body && c.a){
+      const r = await blobFetch(c.a);
+      if (!r.ok) throw new Error(T("下載聲音失敗"));
+      body = await r.json();
+      idb.put('audc:' + ck, body);
+    }
+    if (!body) throw new Error(T("這段聲音只存在準備它的那台裝置"));
+    return body.mp3;
+  })();
+  PREP.chunks.set(ck, p);
+  p.catch(() => PREP.chunks.delete(ck));
+  return p;
+}
+async function prepSentence(book, ch, s, voice){
+  const key = audKey(book, ch, voice);
+  const mem = PREP.mem.get(key);
+  if (mem && mem.sents[s]) return mem.sents[s];
+  const doc = PREP.docs.get(key);
+  if (!doc) return null;
+  const c = (doc.chunks || []).find(c => s >= c.from && s < c.from + c.n);
+  if (!c) return null;
+  const arr = await prepLoadChunk(key, c);
+  // warm the next chunk in the background
+  const nx = (doc.chunks || []).find(x => x.from === c.from + c.n);
+  if (nx) prepLoadChunk(key, nx).catch(() => {});
+  return unb64(arr[s - c.from]);
+}
+let devSaveAt = 0;
+function saveDevice(){
+  if (!PREP.rtf) return;
+  PREP.devices[DEV] = { name:DEV_NAME, rtf: Math.round(PREP.rtf * 100) / 100, at: Date.now() };
+  if (!cloud.ready || Date.now() - devSaveAt < 60000) return;
+  devSaveAt = Date.now();
+  const body = JSON.parse(JSON.stringify(PREP.devices));
+  enqueue(() => col().doc('devices').set(body));
+}
+function prepQueue(ch, startAt, front){
+  if (!S.id) return;
+  const v = aiVoiceId(), key = audKey(S.id, ch, v);
+  let job = PREP.jobs.find(j => j.key === key);
+  if (!job){ job = { key, book:S.id, ch, voice:v, start:startAt || 0 }; if (front) PREP.jobs.unshift(job); else PREP.jobs.push(job); }
+  else if (front){ PREP.jobs = [job].concat(PREP.jobs.filter(j => j !== job)); job.start = startAt || 0; }
+  if (front && PREP.job && PREP.job !== job) PREP.job.stop = true;
+  renderPrep(); renderToc();
+  prepRun();
+}
+async function prepRun(){
+  if (PREP.job || !PREP.jobs.length) return;
+  const job = PREP.job = PREP.jobs[0];
+  let done = false;
+  try{
+    await aiEnsure();
+    await aiVoice(job.voice);
+    if (job.book !== S.id) throw new Error('skip');
+    const sents = loadChapter(job.ch).sents, total = sents.length;
+    let doc = PREP.docs.get(job.key);
+    if (doc && doc.by && doc.by !== DEV && Date.now() - (doc.at || 0) < 180000 && prepCount(job.key).done < total){
+      PREP.lastErr = T("另一台裝置正在準備這一章"); throw new Error('skip');
+    }
+    await prepEvict(job.key);
+    doc = doc ? JSON.parse(JSON.stringify(doc)) : { kind:'aud', book:job.book, ch:job.ch, voice:job.voice, total, chunks:[], used:Date.now() };
+    doc.kind = 'aud';
+    doc.total = total;
+    const cov = covered(doc);
+    const mem = PREP.mem.get(job.key) || { total, sents:[] };
+    PREP.mem.set(job.key, mem);
+    const start = Math.min(job.start || 0, total);
+    const order = [];
+    for (let i = start; i < total; i++) order.push(i);
+    for (let i = 0; i < start; i++) order.push(i);
+    let pend = [], from = -1;
+    const flush = async () => {
+      if (!pend.length) return;
+      const c = await prepStoreChunk(job.key, from, pend);
+      doc.chunks.push(c); doc.by = DEV; doc.at = Date.now(); doc.rtf = Math.round(PREP.rtf * 100) / 100;
+      PREP.docs.set(job.key, JSON.parse(JSON.stringify(doc)));
+      await prepSaveDoc(job.key, doc);
+      for (let k = 0; k < pend.length; k++) idb.del('audp:' + job.key + ':' + (from + k));
+      pend = []; from = -1;
+      saveDevice(); renderToc();
+    };
+    let lastToc = 0;
+    for (const i of order){
+      if (job.stop) break;
+      if (cov[i]){ await flush(); continue; }
+      if (pend.length && i !== from + pend.length) await flush();
+      let mp3 = mem.sents[i];
+      if (!mp3){
+        const t0 = performance.now();
+        const m = await aiPost({ type:'gen', text:sents[i].t, voice:job.voice, speed:1 });
+        const secs = (performance.now() - t0) / 1000;
+        const audio = (m.audio && m.audio.length) ? m.audio : new Float32Array(2400);
+        const r = (audio.length / 24000) / Math.max(0.001, secs);
+        PREP.rtf = PREP.rtf ? PREP.rtf * 0.7 + r * 0.3 : r; AI.rtf = PREP.rtf;
+        AI.last = { ms: secs * 1000, dur: audio.length / 24000, rms: 0 };
+        mp3 = encodeMp3(audio);
+        mem.sents[i] = mp3;
+        await idb.put('audp:' + job.key + ':' + i, mp3);
+      }
+      if (!pend.length) from = i;
+      pend.push(mp3);
+      if (pend.length >= CHUNK) await flush();
+      renderPrep();
+      if (Date.now() - lastToc > 5000){ lastToc = Date.now(); renderToc(); }
+    }
+    await flush();
+    if (!job.stop){
+      doc.by = null; doc.at = Date.now();
+      PREP.docs.set(job.key, JSON.parse(JSON.stringify(doc)));
+      await prepSaveDoc(job.key, doc);
+      done = true;
+    }
+  }catch(e){
+    if (e.message !== 'skip'){ console.warn('prep', e); PREP.lastErr = e.message; }
+    done = true;
+  }finally{
+    if (done || job.cancel) PREP.jobs = PREP.jobs.filter(j => j !== job);
+    job.stop = false;
+    PREP.job = null;
+    renderPrep(); renderToc();
+    if (PREP.jobs.length) setTimeout(prepRun, 50);
+  }
+}
+function renderPrep(){
+  $('fixBtn').hidden = !(prefs.engine === 'mp3' && S.id && IMP.docs.has(impKey(S.id, S.ch)));
+  const box = $('prepBox'); if (!box) return;
+  if (prefs.engine === 'mp3' && S.id && S.chapters[S.ch]){ renderImp(); return; }
+  if (!useAI() || !S.id || !S.chapters[S.ch]){ box.hidden = true; $('prepMini').hidden = true; deckHeight(); return; }
+  box.hidden = false;
+  const v = aiVoiceId(), key = audKey(S.id, S.ch, v);
+  const cnt = prepCount(key);
+  const total = cnt.total || ((S.cache[S.ch] || {}).sents || []).length;
+  const frac = total ? cnt.done / total : 0;
+  const doc = PREP.docs.get(key) || {};
+  const running = !!(PREP.job && PREP.job.key === key);
+  const queued = PREP.jobs.some(j => j.key === key);
+  const rtf = running ? PREP.rtf : (doc.rtf || 0);
+  const thr = rtf ? Math.min(0.97, Math.max(0, 1 - rtf * 0.9)) : null;
+  $('prepFill').style.width = (frac * 100) + '%';
+  $('prepMark').hidden = thr == null || frac >= 1;
+  if (thr != null) $('prepMark').style.left = (thr * 100) + '%';
+  const vname = T((AI_VOICES.find(x => x.id === v) || {}).name || v);
+  const words = (S.cache[S.ch] || {}).words || 0;
+  const audioMin = words / 160;
+  let t, btn = '';
+  if (frac >= 1) t = T("✓ 這一章的 AI 語音（{0}）已準備好，存在帳號裡，任何裝置都能直接聽。", vname);
+  else if (running){
+    const left = rtf ? audioMin * (1 - frac) / rtf : 0;
+    t = T("準備中 {0}% · {1}速度 {2}", Math.round(frac * 100), T(DEV_NAME), rtf ? T("{0} 倍", rtf.toFixed(2)) : T("測量中")) + (rtf ? T(" · 還要約 {0}", fmtMin(left)) : '');
+    if (thr != null) t += frac >= thr ? T(" · 現在開始聽，可以一路聽完不中斷") : T(" · 到 {0}%（直線處）開始聽就不會中斷", Math.round(thr * 100));
+    btn = T("暫停準備");
+  } else if (queued){ t = T("排隊準備中 · 已完成 {0}%", Math.round(frac * 100)); btn = T("取消"); }
+  else if (doc.by && doc.by !== DEV && Date.now() - (doc.at || 0) < 180000){ t = T("另一台裝置正在準備 · {0}%", Math.round(frac * 100)); btn = T("重新整理"); }
+  else {
+    t = (frac > 0 ? T("已準備 {0}%。", Math.round(frac * 100)) : '') + T("AI 語音（{0}）要先準備才能聽，聲音約 {1}。", vname, fmtMin(audioMin));
+    btn = AI.state === 'ready' ? T("準備這一章") : T("在這台裝置準備");
+  }
+  if (PREP.lastErr && !running) t += ` · ${PREP.lastErr}`;
+  if (PREP.autoOff && frac < 1 && !running) t += T(" · 自動準備下一章已暫停");
+  $('prepText').textContent = t;
+  $('prepBtn').textContent = btn; $('prepBtn').hidden = !btn;
+  // the same status in the player bar, so it is reachable from anywhere in the chapter
+  const pct = Math.round(frac * 100);
+  $('prepMini').hidden = false;
+  $('prepMiniFill').style.width = pct + '%';
+  $('prepMiniText').textContent = frac >= 1 ? `✓ AI ${vname} 100%`
+    : running ? T("準備中") + ` ${pct}% (${cnt.done}/${total})` + (thr != null ? (frac >= thr ? ' ✓' : ` → ${Math.round(thr * 100)}%`) : '')
+    : queued ? T("排隊") + ` ${pct}%` : T("已準備 {0}%。", pct);
+  $('prepMiniBtn').textContent = btn; $('prepMiniBtn').hidden = !btn;
+  deckHeight();
+  const nextCh = S.chapters.findIndex((c, i) => i > S.ch && !c.back);
+  $('prepMore').hidden = !(AI.state === 'ready' && nextCh > 0 && !PREP.jobs.some(j => j.ch === nextCh && j.book === S.id));
+  const devs = Object.values(PREP.devices || {}).filter(d => d && d.rtf).sort((a, b) => b.at - a.at).slice(0, 4);
+  $('prepDevs').textContent = devs.length ? T("各裝置速度：") + devs.map(d => T("{0} {1} 倍", T(d.name), d.rtf)).join('、') : '';
+}
+/* ---------- imported audiobook MP3s (made with make_audiobook.py): one file per chapter, kept on the device
+   and in the account; played by decoding ~60 s at a time so long chapters fit in memory on a phone ---------- */
+const IMP = { docs:new Map(), bytes:new Map(), index:new Map(), busy:'', srcs:[], timer:null };
+const impKey = (book, ch) => `imp-${book}-${ch}`;
+function pushImpDoc(key, doc){
+  const d = dirty.imp; if (!d.includes(key)){ d.push(key); dirty.imp = d; }
+  if (!cloud.ready) return Promise.resolve();
+  const body = JSON.parse(JSON.stringify(doc));
+  return enqueue(async () => { await orFail(col().doc(key).set(body), 15000); dirty.imp = dirty.imp.filter(k => k !== key); });
+}
+// send a chapter's MP3 to the account in pieces; the copy it replaces is removed afterwards
+async function impUpload(key, doc, u8, oldChunks){
+  const title = (S.chapters[doc.ch] || {}).title || doc.name;
+  const chunks = [];
+  if (!IMP.noRaw){
+    try{
+      // whole MP3 pieces (cut between frames) that an ordinary audio player can stream
+      const idx = mp3Index(u8), fdur = idx.spf / (idx.sr || 24000), parts = [];
+      let a = 0;
+      while (a < idx.frames){
+        let b = a; while (b < idx.frames && idx.offs[b + 1] - (a ? idx.offs[a] : 0) <= IMP_PART) b++;
+        if (b === a) b = a + 1;
+        if (S.id === doc.book){ IMP.busy = T('「{0}」上傳到帳號中 {1}%', title, Math.round(idx.offs[a] / u8.length * 100)); renderPrep(); }
+        const from = a ? idx.offs[a] : 0, to = b >= idx.frames ? u8.length : idx.offs[b];
+        const up = await orFail(cloud.assets.upload(new Blob([u8.slice(from, to)], { type:'audio/mpeg' }), { type:'audio/mpeg' }), 240000);
+        parts.push({ id: up.id, t0: Math.round(a * fdur * 1000) / 1000 });
+        a = b;
+      }
+      doc.raw = true; doc.parts = parts; doc.durx = idx.dur; doc.chunks = parts.map(p => p.id);
+      if (IMP.docs.has(key)) IMP.docs.set(key, doc);
+      ls.set('vob:' + key, doc);
+      await pushImpDoc(key, doc);
+      for (const id of oldChunks || []) if (!doc.chunks.includes(id)){ try{ await cloud.assets.delete(id); }catch(e){} }
+      return;
+    }catch(e){
+      console.warn('raw upload', e);
+      if (!(e && e.code === 'unsupported_type')) throw e;
+      IMP.noRaw = true;            // this account refuses it: fall back to text pieces
+    }
+  }
+  delete doc.raw; delete doc.parts;
+  for (let o = 0; o < u8.length; o += IMP_CHUNK){
+    if (S.id === doc.book){ IMP.busy = T('「{0}」上傳到帳號中 {1}%', title, Math.round(o / u8.length * 100)); renderPrep(); }
+    const up = await orFail(cloud.assets.upload(new Blob([b64(u8.subarray(o, o + IMP_CHUNK))], { type:'text/plain' }), { type:'text/plain' }), 180000);
+    chunks.push(up.id);
+  }
+  doc.chunks = chunks;
+  if (IMP.docs.has(key)) IMP.docs.set(key, doc);
+  ls.set('vob:' + key, doc);
+  await pushImpDoc(key, doc);
+  for (const id of oldChunks || []) if (!chunks.includes(id)){ try{ await cloud.assets.delete(id); }catch(e){} }
+}
+const IMP_PART = 4e9;                       // bytes per streamable piece (asset limit 20 MiB)
+const IMP_CHUNK = 9000000;                       // bytes per account chunk (~12 MB as text)
+function mp3Index(u8){
+  let p = 0;
+  if (u8[0] === 0x49 && u8[1] === 0x44 && u8[2] === 0x33){            // skip ID3v2 tag
+    p = 10 + ((u8[6] & 127) << 21 | (u8[7] & 127) << 14 | (u8[8] & 127) << 7 | (u8[9] & 127));
+  }
+  const BR1 = [0,32,40,48,56,64,80,96,112,128,160,192,224,256,320], BR2 = [0,8,16,24,32,40,48,56,64,80,96,112,128,144,160];
+  const SR = { 3:[44100,48000,32000], 2:[22050,24000,16000], 0:[11025,12000,8000] };
+  const offs = []; let sr = 0, spf = 0;
+  while (p + 4 <= u8.length){
+    if (u8[p] !== 0xFF || (u8[p + 1] & 0xE0) !== 0xE0){ p++; continue; }
+    const ver = (u8[p + 1] >> 3) & 3, layer = (u8[p + 1] >> 1) & 3, bri = u8[p + 2] >> 4, sri = (u8[p + 2] >> 2) & 3, pad = (u8[p + 2] >> 1) & 1;
+    if (ver === 1 || layer !== 1 || bri === 0 || bri === 15 || sri === 3){ p++; continue; }
+    const rate = SR[ver][sri], br = (ver === 3 ? BR1 : BR2)[bri] * 1000;
+    const len = Math.floor((ver === 3 ? 144 : 72) * br / rate) + pad;
+    if (len < 24){ p++; continue; }
+    if (!sr){ sr = rate; spf = ver === 3 ? 1152 : 576; }
+    offs.push(p); p += len;
+  }
+  offs.push(u8.length);
+  return { offs, sr, spf, frames: offs.length - 1, dur: (offs.length - 1) * spf / (sr || 24000) };
+}
+function impChapterFromFile(name, u8){
+  const m = name.match(/^(\d{1,3})[\s_.\-]/);
+  if (m) return +m[1] - 1;
+  // ID3 track number "6/21"
+  const head = new TextDecoder('latin1').decode(u8.subarray(0, Math.min(u8.length, 4096)));
+  const t = head.match(/TRCK[\s\S]{7}(\d{1,3})\//);
+  if (t) return +t[1] - 1;
+  const base = name.replace(/\.mp3$/i, '').toLowerCase();
+  const i = S.chapters.findIndex(c => base.includes(c.title.toLowerCase()));
+  return i;
+}
+async function impLoadDocs(){
+  if (!S.id) return;
+  const book = S.id;
+  for (let ch = 0; ch < S.chapters.length; ch++){
+    const k = impKey(book, ch), l = ls.get('vob:' + k, null);
+    if (l && !IMP.docs.has(k)) IMP.docs.set(k, l);
+  }
+  if (cloud.ready){
+    try{
+      const snap = await col().where('kind', '==', 'imp').where('book', '==', book).get();
+      snap.docs.forEach(d => IMP.docs.set(d.id, JSON.parse(JSON.stringify(d.data()))));
+    }catch(e){ console.warn('imp docs', e); }
+  }
+  renderToc(); renderPrep();
+}
+async function impImport(files){
+  if (!S.id) return;
+  const book = S.id;
+  for (const f of files){
+   try{
+    IMP.busy = T('讀取「{0}」中…', f.name); renderPrep();
+    const u8 = new Uint8Array(await f.arrayBuffer());
+    const ch = impChapterFromFile(f.name, u8);
+    if (!(ch >= 0 && ch < S.chapters.length)){ IMP.busy = T('「{0}」對不到章節，檔名開頭請保留章節編號（例如 06）。', f.name); renderPrep(); continue; }
+    const idx = mp3Index(u8);
+    if (!idx.frames){ IMP.busy = T('「{0}」不是可以播放的 MP3。', f.name); renderPrep(); continue; }
+    const key = impKey(book, ch);
+    let sha = 'n' + u8.length;
+    try{ sha = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', u8))).map(x => x.toString(16).padStart(2, '0')).join(''); }catch(e){}
+    const old = IMP.docs.get(key);
+    try{ await idb.put('impf:' + key, u8.buffer); }catch(e){ console.warn('imp idb', e); }
+    if (old && old.sha === sha && (old.chunks || []).length){
+      // the same file is already in the account: nothing to upload
+      IMP.bytes.set(key, u8); IMP.index.set(key, mp3Index(u8));
+      IMP.busy = T('「{0}」已經匯入過了，沒有重複上傳。', S.chapters[ch].title);
+      renderToc(); renderPrep(); continue;
+    }
+    IMP.bytes.set(key, u8); IMP.index.set(key, idx);
+    const doc = { kind:'imp', book, ch, name:f.name, size:u8.length, dur:Math.round(idx.dur), chunks:[], at:Date.now(), sha };
+    IMP.align && IMP.align.delete(key); idb.del('impal3:' + key);
+    IMP.docs.set(key, doc); ls.set('vob:' + key, doc);
+    renderToc(); renderPrep();
+    if (old && (old.chunks || []).length){ doc.replaces = old.chunks; ls.set('vob:' + key, doc); }
+    if (cloud.ready && cloud.assets && navigator.onLine !== false){
+      try{
+        await impUpload(key, doc, u8, old && old.chunks);
+        delete doc.replaces; ls.set('vob:' + key, doc);
+        IMP.busy = T('✓ 已放進「{0}」', S.chapters[ch].title);
+      }catch(e){
+        console.warn('imp upload', e);
+        doc.chunks = [];
+        IMP.busy = T('✓ 已放進「{0}」；連上網路後會自動上傳到帳號。', S.chapters[ch].title);
+      }
+    } else IMP.busy = T('✓ 已放進「{0}」；連上網路後會自動上傳到帳號。', S.chapters[ch].title);
+    renderToc(); renderPrep();
+   }catch(e){
+    console.warn('imp', e);
+    IMP.busy = T('「{0}」匯入失敗：{1}', f.name, e.code || e.message || String(e)); renderPrep();
+   }
+  }
+}
+async function impFetch(key, quiet){
+  const doc = IMP.docs.get(key);
+  if (!doc || !(doc.chunks || []).length) return null;
+  const parts = [];
+  for (let i = 0; i < doc.chunks.length; i++){
+    if (!quiet){ IMP.busy = T('從帳號下載有聲書 {0}%', Math.round(i / doc.chunks.length * 100)); renderPrep(); }
+    const r = await blobFetch(doc.chunks[i]);
+    if (!r.ok) throw new Error(T('下載聲音失敗'));
+    const got = new Uint8Array(await r.arrayBuffer());
+    parts.push(doc.raw ? got : b64bytes(got));
+  }
+  const n = parts.reduce((a, p) => a + p.length, 0), all = new Uint8Array(n);
+  let o = 0; for (const p of parts){ all.set(p, o); o += p.length; }
+  if (!quiet) IMP.busy = '';
+  await idb.put('impf:' + key, all.buffer);
+  return all.buffer;
+}
+async function impBytes(key){
+  if (IMP.bytes.has(key)) return IMP.bytes.get(key);
+  let buf = await idb.get('impf:' + key);
+  if (!buf){
+    if (navigator.onLine === false) throw new Error(T('這一章還沒下載到這台裝置，連上網路後才能聽。'));
+    buf = await impFetch(key, false);
+    if (!buf) return null;
+  }
+  const u8 = new Uint8Array(buf);
+  IMP.bytes.set(key, u8);
+  return u8;
+}
+// rough map between time in the MP3 and sentences: speech time follows the characters, plus a pause per paragraph
+function impTimeline(ch, dur){
+  const d = loadChapter(ch), PAUSE = 0.45;
+  const paraStart = new Uint8Array(d.sents.length);
+  d.paras.forEach(p => { if (p.idx.length) paraStart[p.idx[0]] = 1; });
+  const titleSec = (S.chapters[ch].title.length + 1) / 14 + PAUSE;
+  const chars = d.sents.reduce((n, s) => n + s.t.length + 1, 0);
+  const cps = chars / Math.max(1, dur - titleSec - d.paras.length * PAUSE);
+  const starts = []; let t = titleSec;
+  for (let i = 0; i < d.sents.length; i++){
+    if (paraStart[i] && i > 0) t += PAUSE;
+    starts.push(t); t += (d.sents[i].t.length + 1) / cps;
+  }
+  return starts;
+}
+
+// Align the MP3 with the text. make_audiobook.py writes digital silence (exact zeros) between paragraphs
+// (0.45 s) and the voice model puts shorter zero gaps between sentences. Every zero gap becomes a candidate
+// boundary, and a small dynamic program picks the candidates whose spacing best fits the character counts.
+async function impAlignCached(key){
+  IMP.align = IMP.align || new Map();
+  if (IMP.align.has(key)) return IMP.align.get(key);
+  let A = await idb.get('impal3:' + key);
+  if (!A){ const doc = IMP.docs.get(key); if (doc && doc.align && doc.align.v === 3) A = doc.align; }
+  if (A){ IMP.align.set(key, A); return A; }
+  return null;
+}
+async function impAlign(key, u8, idx){
+  let A = await impAlignCached(key);
+  if (A) return A;
+  const c = aiCtx(), fdur = idx.spf / idx.sr, SEG = Math.max(1, Math.round(60 / fdur)), STEP = 0.01;
+  const env = [];
+  for (let f = 0; f < idx.frames; f += SEG){
+    const a = Math.max(0, f - 3), b = Math.min(idx.frames, f + SEG);
+    const buf = await c.decodeAudioData(u8.slice(idx.offs[a], idx.offs[b]).buffer);
+    const data = buf.getChannelData(0), sr = buf.sampleRate, win = Math.max(1, Math.round(STEP * sr));
+    const from = Math.round((f - a) * fdur * sr), to = Math.min(data.length, from + Math.round((b - f) * fdur * sr));
+    for (let i = from; i + win <= to; i += win){ let q = 0; for (let j = i; j < i + win; j++) q += data[j] * data[j]; env.push(Math.sqrt(q / win)); }
+    IMP.busy = T('對齊文字中 {0}%', Math.round(b / idx.frames * 100)); renderPrep();
+  }
+  // every stretch of digital silence: [time speech resumes, length of the silence]
+  const THR = 0.0001, MIN = 8;                          // in 10 ms steps
+  const runs = []; let quiet = 0, first = null;
+  for (let i = 0; i < env.length; i++){
+    if (env[i] < THR){ quiet++; continue; }
+    if (first == null) first = i * STEP;
+    else if (quiet >= MIN) runs.push([Math.round(i * STEP * 100) / 100, Math.round(quiet * STEP * 100) / 100]);
+    quiet = 0;
+  }
+  A = { v: 3, first: first || 0, runs };
+  IMP.busy = ''; IMP.align.set(key, A);
+  await idb.put('impal3:' + key, A);
+  const doc = IMP.docs.get(key);
+  if (doc){ doc.align = A; ls.set('vob:' + key, doc); if (cloud.ready && (doc.chunks || []).length) pushImpDoc(key, doc); }
+  return A;
+}
+// choose n-1 boundaries among candidate times inside [start, end] so each piece's length fits its weight
+function pickBounds(start, end, weights, cands){
+  const n = weights.length;
+  if (n <= 1) return [start];
+  const C = cands.filter(t => t > start + 0.05 && t < end - 0.05);
+  const sumw = weights.reduce((a, b) => a + b, 0) || 1, span = end - start;
+  const exp = weights.map(w => Math.max(0.2, w / sumw * span));
+  if (C.length < n - 1){
+    const out = [start]; let acc = 0;
+    for (let i = 0; i < n - 1; i++){ acc += weights[i]; out.push(start + acc / sumw * span); }
+    return out;
+  }
+  // pts[0] = start, then candidates; item i starts at pts[j]; item n-1 ends at end
+  const pts = [start].concat(C), m = pts.length, INF = 1e18;
+  const cost = (i, d) => { const e = exp[i]; return (d - e) * (d - e) / e; };
+  let prev = new Float64Array(m).fill(INF); prev[0] = 0;
+  const back = [];
+  for (let i = 1; i < n; i++){                            // item i starts at pts[j]
+    const cur = new Float64Array(m).fill(INF), bk = new Int32Array(m).fill(-1);
+    for (let j = i; j < m; j++){
+      for (let k = i - 1; k < j; k++){
+        if (prev[k] >= INF) continue;
+        const v = prev[k] + cost(i - 1, pts[j] - pts[k]);
+        if (v < cur[j]){ cur[j] = v; bk[j] = k; }
+      }
+    }
+    back.push(bk); prev = cur;
+  }
+  let best = -1, bv = INF;
+  for (let j = n - 1; j < m; j++){ if (prev[j] >= INF) continue; const v = prev[j] + cost(n - 1, end - pts[j]); if (v < bv){ bv = v; best = j; } }
+  if (best < 0) return pickBounds(start, end, weights, []);
+  const idxs = [best];
+  for (let i = n - 1; i >= 1; i--){ idxs.push(back[i - 1][idxs[idxs.length - 1]]); }
+  return idxs.reverse().map(j => pts[j]);
+}
+function impTimelineAligned(ch, dur, A){
+  // One pass over the whole chapter: each sentence starts where speech resumes after a silence,
+  // chosen so that sentence lengths fit the reading speed, long pauses fall between sentences,
+  // and paragraphs start after the longest pauses.
+  const d = loadChapter(ch), n = d.sents.length;
+  const pstart = new Set(d.paras.filter(p => p.idx.length).map(p => p.idx[0]));
+  const len = i => d.sents[i].t.length + 1;
+  // places the listener marked by hand: "the voice is reading this sentence now"
+  const doc = IMP.docs.get(impKey(S.id, ch)) || {}, anchors = {};
+  Object.entries(doc.anchors || {}).forEach(([i, t]) => { if (+i < n) anchors[+i] = +t; });
+  // pieces of one sentence split across lines are read without a pause, so keep them together
+  const groups = []; let cur = [];
+  for (let i = 0; i < n; i++){
+    cur.push(i);
+    if (/[.!?…]["”’)\]]*\s*$/.test(d.sents[i].t) || pstart.has(i + 1) || (i + 1) in anchors || i === n - 1){ groups.push(cur); cur = []; }
+  }
+  const W = [S.chapters[ch].title.length + 1].concat(groups.map(g => g.reduce((a, i) => a + len(i), 0)));
+  const N = W.length, first = A.first || 0;
+  const pts = [[first, 9]].concat((A.runs || []).filter(r => r[1] >= 0.08 && r[0] > first + 0.1 && r[0] < dur - 0.2),
+    Object.values(anchors).filter(t => t > first + 0.1 && t < dur - 0.2).map(t => [t, 0.25])).sort((a, b) => a[0] - b[0]);
+  const m = pts.length, T = pts.map(p => p[0]), Sl = pts.map(p => p[1]);
+  const tot = W.reduce((a, b) => a + b, 0) || 1, span = dur - first;
+  const exp = W.map(w => Math.max(0.3, w / tot * span));
+  const pen = new Float64Array(m + 1);
+  for (let k = 0; k < m; k++) pen[k + 1] = pen[k] + Math.max(0, Sl[k] - 0.3);
+  let gs;
+  if (m >= N){
+    const INF = 1e18, back = [];
+    let prev = new Float64Array(m).fill(INF); prev[0] = 0;
+    for (let i = 1; i < N; i++){
+      const cur2 = new Float64Array(m).fill(INF), bk = new Int32Array(m).fill(-1);
+      const e = exp[i - 1], bonus = pstart.has(groups[i - 1][0]) ? 2 : 1, reach = 4 * e + 15, at = anchors[groups[i - 1][0]];
+      for (let j = i; j < m; j++){
+        if (at != null && (T[j] < at - 20 || T[j] > at + 0.3)) continue;
+        let bv = INF, bkk = -1;
+        for (let k = j - 1; k >= i - 1; k--){
+          const dd = T[j] - T[k];
+          if (dd > reach) break;
+          if (prev[k] >= INF) continue;
+          const v = prev[k] + (dd - e) * (dd - e) / e + 6 * (pen[j] - pen[k + 1]);
+          if (v < bv){ bv = v; bkk = k; }
+        }
+        if (bkk >= 0){ cur2[j] = bv - bonus * Math.min(Sl[j], 0.7); bk[j] = bkk; }
+      }
+      back.push(bk); prev = cur2;
+    }
+    let best = -1, bv = INF;
+    const eL = exp[N - 1];
+    for (let j = 0; j < m; j++){ if (prev[j] >= INF) continue; const dd = dur - T[j], v = prev[j] + (dd - eL) * (dd - eL) / eL; if (v < bv){ bv = v; best = j; } }
+    if (best >= 0){
+      const idxs = [best];
+      for (let i = N - 1; i >= 1; i--) idxs.push(back[i - 1][idxs[idxs.length - 1]]);
+      gs = idxs.reverse().map(j => T[j]);
+    }
+  }
+  if (!gs){ gs = [first]; let acc = 0; for (let i = 0; i < N - 1; i++){ acc += W[i]; gs.push(first + acc / tot * span); } }
+  const starts = new Array(n).fill(0);
+  groups.forEach((g, gi) => {
+    const a = gs[gi + 1], b = gi + 2 < gs.length ? gs[gi + 2] : dur;
+    const tw = g.reduce((x, i) => x + len(i), 0) || 1; let acc = 0;
+    g.forEach(i => { starts[i] = a + acc / tw * (b - a); acc += len(i); });
+  });
+  return starts;
+}
+function impStop(){
+  clearInterval(IMP.timer); IMP.timer = null;
+  if (IMP.el){ IMP.hush = Date.now() + 1500; IMP.el.onended = null; try{ IMP.el.pause(); }catch(e){} }
+  for (const s of IMP.srcs){ try{ s.onended = null; s.stop(); }catch(e){} }
+  IMP.srcs = [];
+}
+function impEl(){
+  if (!IMP.el){
+    const a = document.createElement('audio');
+    a.preload = 'auto'; a.setAttribute('playsinline', ''); a.style.display = 'none';
+    document.body.appendChild(a);
+    // paused from the lock screen, a call or headphones being unplugged
+    a.addEventListener('pause', () => { if (Date.now() > (IMP.hush || 0) && S.playing && prefs.engine === 'mp3' && !a.ended) pause(); });
+    IMP.el = a;
+  }
+  return IMP.el;
+}
+const partAt = (doc, t) => { let k = 0; doc.parts.forEach((p, i) => { if (p.t0 <= t + 0.01) k = i; }); return k; };
+function impLoadPart(el, doc, k){
+  const id = doc.parts[k].id;
+  IMP.hush = Date.now() + 1500;
+  if (el.dataset.part !== id){ el.src = '/_blob/' + id; el.dataset.part = id; }
+  IMP.partK = k;
+}
+function impSeek(el, doc, t){
+  return new Promise(res => {
+    const k = partAt(doc, t), t0 = doc.parts[k].t0;
+    let done = false;
+    const go = () => { if (done) return; done = true; try{ el.currentTime = Math.max(0, t - t0); }catch(e){} res(); };
+    const same = el.dataset.part === doc.parts[k].id;
+    impLoadPart(el, doc, k);
+    if (same && el.readyState >= 1) go(); else el.addEventListener('loadedmetadata', go, { once:true });
+    setTimeout(go, 10000);
+  });
+}
+function mediaSessionSetup(){
+  if (!('mediaSession' in navigator)) return;
+  try{
+    navigator.mediaSession.metadata = new MediaMetadata({ title: (S.chapters[S.ch] || {}).title || '', artist: (LIB[S.id] || {}).title || '', album: 'Voice of Books' });
+    const h = { play: () => play(), pause: () => pause(), previoustrack: () => $('prevS').click(), nexttrack: () => $('nextS').click() };
+    for (const [k, f] of Object.entries(h)) navigator.mediaSession.setActionHandler(k, f);
+  }catch(e){}
+}
+async function impPlay(){
+  const g = ++S.gen;
+  impStop();
+  const ch = S.ch, key = impKey(S.id, ch);
+  if (!IMP.docs.has(key)){
+    S.playing = false; setPlayIcon();
+    $('nowSub').textContent = T('這一章還沒有匯入有聲書，按上方的「匯入 MP3」。');
+    return;
+  }
+  const doc = IMP.docs.get(key);
+  { const el = impEl(); el.muted = true; if (IMP.elKey !== key){ el.src = SILENT; IMP.elKey = null; } const p = el.play(); if (p) p.catch(() => {}); }
+  if (false){
+    if (await impStream(g, ch, key, doc) !== false) return;
+    if (g !== S.gen || !S.playing) return;
+  }
+  let u8;
+  try{ u8 = await impBytes(key); }catch(e){ IMP.busy = e.message; renderPrep(); }
+  if (g !== S.gen || !S.playing){ impStop(); return; }
+  if (!u8){ impStop(); S.playing = false; setPlayIcon(); $('nowSub').textContent = T('這段聲音只存在準備它的那台裝置'); return; }
+  let idx = IMP.index.get(key);
+  if (!idx){ idx = mp3Index(u8); IMP.index.set(key, idx); }
+  let R = null;
+  try{ R = await impAlign(key, u8, idx); }catch(e){ console.warn('align', e); }
+  if (g !== S.gen || !S.playing) return;
+  const starts = R && R.runs ? impTimelineAligned(ch, idx.dur, R) : impTimeline(ch, idx.dur);
+  IMP.starts = starts;
+  // resume from the exact second saved last time, if the place in the text has not moved since
+  const pb = PROG.books[S.id] || {};
+  const resumeAt = pb.tch === ch && pb.ts === S.s && pb.t > 0 ? pb.t : null;
+  const el = impEl();
+  if (IMP.elKey !== key){
+    if (IMP.elUrl) URL.revokeObjectURL(IMP.elUrl);
+    IMP.elUrl = URL.createObjectURL(new Blob([u8], { type: 'audio/mpeg' }));
+    IMP.elKey = key; IMP.hush = Date.now() + 1500;
+    el.src = IMP.elUrl;
+  }
+  el.playbackRate = el.defaultPlaybackRate = prefs.rate;
+  const t = resumeAt != null ? resumeAt : (starts[S.s] || 0);
+  await new Promise(res => {
+    let done = false;
+    const go = () => { if (done) return; done = true; try{ el.currentTime = t; }catch(e){} res(); };
+    if (el.readyState >= 1) go(); else el.addEventListener('loadedmetadata', go, { once: true });
+    setTimeout(go, 6000);
+  });
+  if (g !== S.gen || !S.playing) return;
+  el.muted = false;
+  try{ await el.play(); }catch(e){
+    console.warn('play', e);
+    S.playing = false; setPlayIcon(); $('nowSub').textContent = T('再按一次播放'); return;
+  }
+  mediaSessionSetup();
+  el.onended = () => { if (g !== S.gen || !S.playing) return; impStop(); S.s = loadChapter(ch).sents.length; advanceChapter(); };
+  IMP.timer = setInterval(() => {
+    if (g !== S.gen || !S.playing){ clearInterval(IMP.timer); return; }
+    const pos = el.currentTime;
+    IMP.pos = { ch, t: pos };
+    const st = IMP.starts || starts;
+    let lo = 0, hi = st.length - 1, i = 0;
+    while (lo <= hi){ const m = (lo + hi) >> 1; if (st[m] <= pos){ i = m; lo = m + 1; } else hi = m - 1; }
+    if (i !== S.s){ markDone(); S.s = i; if (document.visibilityState === 'visible') highlight(true); savePos(); }
+    else if (!IMP.lastSave || Date.now() - IMP.lastSave > 5000){ IMP.lastSave = Date.now(); savePos(); }
+    const left = Math.max(0, idx.dur - pos) / prefs.rate / 60;
+    $('nowSub').textContent = T('有聲書 {0} / {1} · 本章剩約 {2}', fmtClock(pos), fmtClock(idx.dur), fmtMin(left));
+  }, 500);
+  highlight(true); savePos();
+}
+// play as an ordinary audio file from the account: keeps going with the screen off, shows on the lock screen
+async function impStream(g, ch, key, doc){
+  const el = impEl();
+  const pb = PROG.books[S.id] || {};
+  const resumeAt = pb.tch === ch && pb.ts === S.s && pb.t > 0 ? pb.t : null;
+  const guess = resumeAt != null ? resumeAt : (IMP.startsKey === key && IMP.starts ? IMP.starts[S.s] || 0 : 0);
+  // start inside the tap (iPhone needs that), silent until it is at the right place
+  el.muted = true; el.playbackRate = el.defaultPlaybackRate = prefs.rate;
+  impLoadPart(el, doc, partAt(doc, guess));
+  const first = el.play();
+  let R = await impAlignCached(key), dur = doc.durx || doc.dur;
+  if (!R){
+    let u8 = null;
+    try{ u8 = await impBytes(key); }catch(e){ IMP.busy = e.message; renderPrep(); }
+    if (g !== S.gen || !S.playing){ impStop(); return; }
+    if (u8){
+      let idx = IMP.index.get(key); if (!idx){ idx = mp3Index(u8); IMP.index.set(key, idx); }
+      dur = idx.dur;
+      try{ R = await impAlign(key, u8, idx); }catch(e){ console.warn('align', e); }
+    }
+  }
+  if (g !== S.gen || !S.playing){ impStop(); return; }
+  const starts = R && R.runs ? impTimelineAligned(ch, dur, R) : impTimeline(ch, dur);
+  IMP.starts = starts; IMP.startsKey = key;
+  const t = resumeAt != null ? resumeAt : (starts[S.s] || 0);
+  try{ await first; }catch(e){ console.warn('stream play', e); }
+  await impSeek(el, doc, t);
+  if (g !== S.gen || !S.playing){ impStop(); return; }
+  el.playbackRate = prefs.rate;
+  try{ await el.play(); }catch(e){
+    console.warn('stream', e);
+    if (e && e.name === 'NotAllowedError'){ el.muted = false; S.playing = false; setPlayIcon(); $('nowSub').textContent = T('再按一次播放'); return; }
+    IMP.noStream = true; return false;               // fall back to playing it inside the page
+  }
+  el.muted = false;
+  if (el.error){ IMP.noStream = true; return false; }
+  mediaSessionSetup();
+  el.onended = async () => {
+    if (g !== S.gen || !S.playing) return;
+    const k = IMP.partK + 1;
+    if (k < doc.parts.length){ impLoadPart(el, doc, k); try{ await el.play(); }catch(e){} return; }
+    impStop(); S.s = loadChapter(ch).sents.length; advanceChapter();
+  };
+  IMP.timer = setInterval(() => {
+    if (g !== S.gen || !S.playing){ clearInterval(IMP.timer); return; }
+    const pos = doc.parts[IMP.partK].t0 + el.currentTime;
+    IMP.pos = { ch, t: pos };
+    const st = IMP.starts || starts;
+    let lo = 0, hi = st.length - 1, i = 0;
+    while (lo <= hi){ const m = (lo + hi) >> 1; if (st[m] <= pos){ i = m; lo = m + 1; } else hi = m - 1; }
+    if (i !== S.s){ markDone(); S.s = i; if (document.visibilityState === 'visible') highlight(true); savePos(); }
+    else if (!IMP.lastSave || Date.now() - IMP.lastSave > 5000){ IMP.lastSave = Date.now(); savePos(); }
+    const left = Math.max(0, dur - pos) / prefs.rate / 60;
+    $('nowSub').textContent = T('有聲書 {0} / {1} · 本章剩約 {2}', fmtClock(pos), fmtClock(dur), fmtMin(left));
+  }, 500);
+  highlight(true); savePos();
+  return true;
+}
+// keep the whole book's audio on this device, for listening without a connection
+const DL = { busy:false };
+async function renderDl(){
+  const btn = $('dlBtn'), mini = $('dlMini'); if (!btn) return;
+  if (!S.id || prefs.engine !== 'mp3'){ btn.hidden = mini.hidden = true; return; }
+  const book = S.id, keys = [...IMP.docs.keys()].filter(k => k.startsWith(impKey(book, '')));
+  if (!keys.length){ btn.hidden = mini.hidden = true; return; }
+  const local = new Set(await idb.keys('impf:' + impKey(book, '')));
+  if (S.id !== book) return;
+  const have = keys.filter(k => local.has('impf:' + k)).length, all = have === keys.length;
+  btn.hidden = mini.hidden = false;
+  if (DL.busy){ btn.disabled = mini.disabled = true; return; }
+  btn.disabled = mini.disabled = all;
+  btn.textContent = all ? T('✓ 已全部存在這台裝置，可以離線聽') : T('下載到這台裝置離線聽（{0}/{1} 章）', have, keys.length);
+  mini.textContent = all ? T('✓ 可離線') : T('⬇ 離線 {0}/{1}', have, keys.length);
+}
+async function downloadBook(){
+  if (DL.busy || !S.id) return;
+  DL.busy = true;
+  const book = S.id, btn = $('dlBtn');
+  const keys = [...IMP.docs.keys()].filter(k => k.startsWith(impKey(book, ''))).sort((a, b) => IMP.docs.get(a).ch - IMP.docs.get(b).ch);
+  let done = 0, failed = 0;
+  for (const k of keys){
+    if (!(await idb.get('impf:' + k))){
+      try{ btn.textContent = $('dlMini').textContent = T('下載中 {0}/{1}…', done + 1, keys.length); await impFetch(k, true); }catch(e){ failed++; }
+    }
+    done++;
+  }
+  DL.busy = false;
+  renderDl();
+  if (failed) $('prepText').textContent = T('有 {0} 章沒下載成功，請確認網路後再按一次。', failed);
+}
+function fmtClock(s){ s = Math.max(0, Math.floor(s)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+function renderImp(){
+  const box = $('prepBox');
+  box.hidden = false;
+  const key = impKey(S.id, S.ch), doc = IMP.docs.get(key);
+  let t;
+  if (doc){
+    t = T('🎧 這一章有匯入的有聲書（{0}，{1}）', fmtClock(doc.dur), (doc.chunks || []).length ? T('已同步') : T('只在這台裝置'));
+  } else t = T('這一章還沒有匯入有聲書。用 make_audiobook.py 轉好的 MP3 可以一次選很多個，會依檔名的章節編號自動放到對的章節。');
+  if (IMP.busy) t += ' · ' + IMP.busy;
+  $('prepText').textContent = t;
+  $('prepBtn').textContent = T('匯入 MP3'); $('prepBtn').hidden = false;
+  $('prepMore').hidden = true; $('prepMark').hidden = true;
+  renderDl();
+  const have = S.chapters.filter((c, i) => IMP.docs.has(impKey(S.id, i))).length;
+  $('prepFill').style.width = (S.chapters.length ? have / S.chapters.length * 100 : 0) + '%';
+  $('prepDevs').textContent = T('這本書已匯入 {0} / {1} 節', have, S.chapters.length);
+  $('prepMini').hidden = false;
+  $('prepMiniFill').style.width = doc ? '100%' : '0%';
+  $('prepMiniText').textContent = doc ? T('🎧 有聲書 {0}', fmtClock(doc.dur)) : T('這一章沒有有聲書');
+  $('prepMiniBtn').textContent = T('匯入 MP3'); $('prepMiniBtn').hidden = false;
+  deckHeight();
+}
+
+// keep at most KEEP_CHAPTERS prepared chapters (whole bookshelf, all voices); drop the least recently played
+async function prepEvict(protectKey){
+  const all = new Map(PREP.docs);
+  if (cloud.ready){
+    try{ const snap = await col().where('kind', '==', 'aud').get(); snap.docs.forEach(d => all.set(d.id, JSON.parse(JSON.stringify(d.data())))); }catch(e){ console.warn('evict list', e); }
+  }
+  const protect = new Set([protectKey].concat(PREP.jobs.map(j => j.key)));
+  if (S.id) protect.add(audKey(S.id, S.ch, aiVoiceId()));
+  const others = [...all.entries()].filter(([k, d]) => k !== protectKey && d && (d.chunks || []).length)
+    .sort((a, b) => (b[1].used || b[1].at || 0) - (a[1].used || a[1].at || 0));
+  let slots = KEEP_CHAPTERS - 1;
+  for (const [k, d] of others){
+    if (protect.has(k) || slots > 0){ slots--; continue; }
+    await prepDelete(k, d);
+  }
+}
+async function prepDelete(k, d){
+  for (const c of d.chunks || []){
+    if (c.a && cloud.assets){ try{ await cloud.assets.delete(c.a); }catch(e){} }
+    idb.del('audc:' + k + ':' + c.from); PREP.chunks.delete(k + ':' + c.from);
+  }
+  PREP.docs.delete(k); PREP.mem.delete(k);
+  try{ localStorage.removeItem('vob:' + k); }catch(e){}
+  if (cloud.ready) await enqueue(() => col().doc(k).delete());
+}
+// when a chapter starts playing: mark it as recently used and line up the next chapter
+function prepOnPlay(book, ch, v){
+  const key = audKey(book, ch, v);
+  if (PREP.usedMark !== key){
+    PREP.usedMark = key;
+    const doc = PREP.docs.get(key);
+    if (doc && (doc.chunks || []).length){ doc.used = Date.now(); prepSaveDoc(key, doc).catch(() => {}); }
+  }
+  if (PREP.autoOff || AI.state !== 'ready') return;
+  const next = S.chapters.findIndex((c, i) => i > ch && !c.back);
+  if (next < 0) return;
+  const nk = audKey(book, next, v), cnt = prepCount(nk);
+  if ((cnt.total && cnt.done >= cnt.total) || PREP.jobs.some(j => j.key === nk) || PREP.autoTried.has(nk)) return;
+  PREP.autoTried.add(nk);
+  prepQueue(next, 0, false);
+}
+function speakCurrentAI(){
+  const g = ++S.gen;
+  const chap = S.cache[S.ch]; if (!chap) return;
+  if (S.s >= chap.sents.length){ advanceChapter(); return; }
+  const ch = S.ch, s = S.s, v = aiVoiceId(), book = S.id, key = audKey(book, ch, v);
+  highlight(true); savePos();
+  prepOnPlay(book, ch, v);
+  const t0w = Date.now();
+  let lastRefresh = Date.now();
+  const tryPlay = async () => {
+    if (g !== S.gen || !S.playing) return;
+    let mp3 = null;
+    try{ mp3 = await prepSentence(book, ch, s, v); }catch(e){ PREP.lastErr = e.message; }
+    if (g !== S.gen || !S.playing) return;
+    if (!mp3){
+      const preparing = PREP.jobs.some(j => j.key === key);
+      if (!preparing && AI.state === 'ready') prepQueue(ch, s, true);
+      const sec = Math.round((Date.now() - t0w) / 1000);
+      $('nowSub').textContent = (preparing || AI.state === 'ready') ? T("這一句還在準備，等了 {0} 秒…", sec) : T("這一章還沒準備好，按上方的「在這台裝置準備」，或用另一台裝置準備。");
+      if (Date.now() - lastRefresh > 15000 && !preparing){ lastRefresh = Date.now(); prepLoadDocs(); }
+      setTimeout(tryPlay, 1000);
+      return;
+    }
+    const c = aiCtx();
+    if (c.state !== 'running') c.resume();
+    let buf;
+    try{ buf = await c.decodeAudioData(mp3.buffer.slice(0)); }
+    catch(e){ console.warn('decode', e); if (g === S.gen && S.playing){ S.s++; speakCurrentAI(); } return; }
+    if (g !== S.gen || !S.playing) return;
+    aiStop();
+    const src = c.createBufferSource();
+    src.buffer = buf; src.playbackRate.value = prefs.rate; src.connect(c.destination);
+    src.onended = () => { if (g !== S.gen || !S.playing) return; AI.src = null; S.s++; markDone(); speakCurrentAI(); };
+    src.start(); AI.src = src;
+    setTimeout(() => { if (g === S.gen && S.playing && c.state !== 'running'){ pause(); $('vnote').textContent = T("聲音被擋住了，請再按一次播放。"); } }, 1500);
+    updateNow();
+  };
+  tryPlay();
+}
+function renderAiPanel(){
+  const st = AI.state;
+  $('aiGo').hidden = st === 'ready' || st === 'loading';
+  $('aiGo').textContent = st === 'error' ? T("再試一次") : T("下載並啟用");
+  if (st === 'ready'){
+    let t = AI.rtf ? aiSpeedText() : T("已就緒，按播放後會顯示這台裝置的速度。");
+    if (AI.last) t += T(" 最近一句：花 {0} 秒產生 {1} 秒的聲音。", (AI.last.ms / 1000).toFixed(1), AI.last.dur.toFixed(1));
+    const devs = Object.values(PREP.devices || {}).filter(d => d && d.rtf);
+    if (devs.length) t += T(" 各裝置速度：") + devs.map(d => T("{0} {1} 倍", T(d.name), d.rtf)).join('、') + '。';
+    $('aiStatus').textContent = t;
+  }
+  else if (st === 'error') $('aiStatus').textContent = T("沒有成功：") + AI.err;
+  else if (st === 'off') $('aiStatus').textContent = '';
+}
+function aiSpeedText(){
+  return T("已就緒。這台裝置產生聲音的速度約是播放速度的 {0} 倍", AI.rtf.toFixed(1)) + (AI.rtf < 1.15 ? T("，句子之間可能會停頓；速度調慢一點會比較順。") : T("，可以順順地念。"));
+}
+function openAiPanel(){ $('tips').hidden = true; deckHeight(); renderAiPanel(); aiDiag(); $('aiPanel').hidden = false; }
+async function aiBench(){
+  try{
+    const v = aiVoiceId(); await aiVoice(v);
+    await aiPost({ type:'gen', text:'Warm up.', voice:v, speed:1, epoch:AI.epoch });
+    const t0 = performance.now();
+    const m = await aiPost({ type:'gen', text:'This is a short test of the voice, to see how fast this device can speak.', voice:v, speed:1, epoch:AI.epoch });
+    AI.rtf = (m.audio.length / 24000) / ((performance.now() - t0) / 1000);
+    renderAiPanel();
+  }catch(e){}
+}
+function aiStart(showProgress){
+  const p = aiEnsure(f => {
+    if (!showProgress) return;
+    $('aiMeter').hidden = false; $('aiBar').style.width = Math.round(f * 100) + '%';
+    $('aiStatus').textContent = f < 1 ? T("下載中 {0}%（約 130 MB）", Math.round(f * 100)) : T("準備語音引擎…");
+  });
+  renderAiPanel(); buildVoiceMenu();
+  return p.then(() => { $('aiMeter').hidden = true; renderAiPanel(); buildVoiceMenu(); renderPrep(); if (PREP.after){ const f = PREP.after; PREP.after = null; f(); } })
+    .catch(() => { $('aiMeter').hidden = true; renderAiPanel(); buildVoiceMenu(); });
+}
+
+/* ---------- playback ---------- */
+let wakeLock = null;
+async function keepAwake(on){
+  try{
+    if (on && !wakeLock && navigator.wakeLock) wakeLock = await navigator.wakeLock.request('screen');
+    if (!on && wakeLock){ await wakeLock.release(); wakeLock = null; }
+  }catch(e){ wakeLock = null; }
+}
+function setPlayIcon(){
+  $('playIcon').innerHTML = S.playing ? '<path d="M6 4h4v16H6zM14 4h4v16h-4z"/>' : '<path d="M7 4v16l13-8z"/>';
+  $('playBtn').setAttribute('aria-label', S.playing ? T("暫停") : T("播放"));
+}
+const useAI = () => prefs.engine === 'ai' && S.lang !== 'zh';
+function speakCurrent(){
+  if (prefs.engine === 'mp3') return impPlay();
+  if (useAI()) return speakCurrentAI();
+  const g = ++S.gen;
+  const chap = S.cache[S.ch];
+  if (!chap) return;
+  if (S.s >= chap.sents.length){ advanceChapter(); return; }
+  const u = new SpeechSynthesisUtterance(chap.sents[S.s].t);
+  const v = currentVoice();
+  if (v){ u.voice = v; u.lang = v.lang; } else u.lang = S.lang === 'zh' ? 'zh-TW' : 'en-US';
+  u.rate = prefs.rate; u.pitch = fallbackPitch;
+  const t0 = performance.now(), len = u.text.length;
+  const fail = () => {
+    S.fails = (S.fails || 0) + 1;
+    if (S.fails >= 3 && v){
+      S.fails = 0;
+      prefs.bad = (prefs.bad || []).concat(v.name); delete prefs.voice[prefs.gender]; savePrefs();
+      buildVoiceMenu();
+      $('vnote').textContent = T("「{0}」念不出來，已經換成其他聲音。", v.name);
+      if (S.playing) play();
+      return true;
+    }
+    return false;
+  };
+  u.onend = () => { if (g !== S.gen || !S.playing) return;
+    if (len > 25 && performance.now() - t0 < 250){ if (fail()) return; speakCurrent(); return; }
+    S.fails = 0; S.s++; markDone(); speakCurrent(); };
+  u.onerror = e => { if (g !== S.gen || !S.playing) return; if (e.error === 'interrupted' || e.error === 'canceled') return;
+    if (e.error === 'not-allowed'){ S.playing = false; setPlayIcon(); return; }
+    if (fail()) return; setTimeout(() => { if (g === S.gen && S.playing) speakCurrent(); }, 300); };
+  synth.speak(u);
+  highlight(true); savePos();
+}
+function play(){
+  if (!S.book) return;
+  if (S.mode !== 'listen') setMode('listen');
+  if (prefs.engine === 'mp3'){
+    aiUnlock(); if (synth) synth.cancel(); aiStop();
+    S.playing = true; setPlayIcon(); keepAwake(true);
+    impPlay();
+    return;
+  }
+  if (useAI()){
+    aiUnlock();
+    if (synth) synth.cancel();
+    S.playing = true; setPlayIcon(); keepAwake(true);
+    aiStop();
+    speakCurrentAI();
+    return;
+  }
+  if (!synth) return;
+  aiStop(); impStop();
+  S.playing = true; setPlayIcon(); keepAwake(true);
+  if (synth.speaking || synth.pending){
+    // Chrome can drop a speak() that follows cancel() at once, so wait a moment in that case only
+    synth.cancel();
+    const g = ++S.gen;
+    setTimeout(() => { if (g === S.gen && S.playing) speakCurrent(); }, 80);
+  } else speakCurrent();   // straight from the tap, which iPhone requires
+}
+function pause(){
+  const was = S.playing;
+  S.playing = false; S.gen++; if (synth) synth.cancel(); aiStop(); impStop(); setPlayIcon(); keepAwake(false);
+  if (was && S.id){ savePos(true); }
+}
+function restartIfPlaying(){ if (S.playing) play(); }
+function advanceChapter(){
+  const next = S.ch + 1;
+  if (next >= S.chapters.length || S.chapters[next].back){
+    pause(); S.s = Math.max(0, S.cache[S.ch].sents.length - 1); highlight(false);
+    const n = document.createElement('div'); n.className = 'endnote';
+    n.textContent = next >= S.chapters.length ? T("全書念完了。") : T("正文念完了。後面是「{0}」，需要的話可以在章節列點選繼續。", S.chapters[next].title);
+    $('text').appendChild(n);
+    savePos(true);
+    return;
+  }
+  goTo(next, 0, true);
+}
+function goTo(ch, s, keepPlaying){
+  const wasPlaying = keepPlaying ?? S.playing;
+  S.gen++; if (synth) synth.cancel();
+  S.ch = ch; loadChapter(ch);
+  S.s = Math.max(0, Math.min(s, S.cache[ch].sents.length - 1));
+  renderChapter(); renderToc(); savePos(true);
+  if (S.mode === 'read'){ S.quietUntil = performance.now() + 700; window.scrollTo({ top: 0 }); }
+  if (wasPlaying && S.mode === 'listen') play(); else { S.playing = false; setPlayIcon(); }
+}
+
+/* ---------- progress ---------- */
+function savePrefs(){ PROG.prefs = prefs; PROG.at = Date.now(); ls.set('vob:prog:' + WHO, PROG); scheduleSync(); }
+function savePos(now){
+  if (!S.id) return;
+  const c = S.cache[S.ch];
+  const b = PROG.books[S.id] || (PROG.books[S.id] = { prog:{} });
+  b.prog = b.prog || {};
+  if (c && c.sents.length) b.prog[S.ch] = Math.max(b.prog[S.ch] || 0, Math.min(1, (S.s + 1) / c.sents.length));
+  b.ch = S.ch; b.s = S.s; b.at = Date.now(); b.chTitle = (S.chapters[S.ch] || {}).title || '';
+  // keep the exact second only while it still lies inside the current sentence; after next/previous sentence or a tap, start from that sentence instead
+  const st = IMP.starts, inSent = st && IMP.pos && st[S.s] != null && IMP.pos.t >= st[S.s] - 0.5 && (S.s + 1 >= st.length || IMP.pos.t < st[S.s + 1]);
+  if (prefs.engine === 'mp3' && IMP.pos && IMP.pos.ch === S.ch){ if (inSent){ b.t = Math.round(IMP.pos.t * 10) / 10; b.tch = S.ch; b.ts = S.s; } else { b.t = 0; b.tch = -1; } }
+  PROG.last = S.id; PROG.at = Date.now(); PROG.prefs = prefs;
+  ls.set('vob:prog:' + WHO, PROG);
+  scheduleSync(now);
+  updateNow();
+}
+function markDone(){ const prev = document.querySelector('.s.on'); if (prev) prev.classList.add('done'); }
+
+/* ---------- rendering ---------- */
+function esc(t){ return String(t).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c])); }
+function ago(t){ const m = Math.round((Date.now() - t) / 60000); if (m < 1) return T("剛剛"); if (m < 60) return T("{0} 分鐘前", m); const h = Math.round(m / 60); if (h < 24) return T("{0} 小時前", h); return T("{0} 天前", Math.round(h / 24)); }
+function renderShelf(){
+  const box = $('shelf');
+  const ids = Object.keys(LIB).sort((a, b) => ((PROG.books[b] || {}).at || LIB[b].added || 0) - ((PROG.books[a] || {}).at || LIB[a].added || 0));
+  box.hidden = false;
+  box.innerHTML = T("<h3>{0} 的書架</h3><p class=\"hint\"><span id=\"syncState\" class=\"sync\"></span></p>", esc(PROFILES[WHO])) +
+    (ids.length ? '<ul></ul>' : T("<p class=\"hint\">還沒有書。按上面的按鈕加入第一本，兩個人共用同一個書架，進度各自記。</p>"));
+  renderSync();
+  if (cloud.ready && cloud.assets){
+    box.insertAdjacentHTML('beforeend', '<p class="hint" style="margin-top:14px"><span id="storeState"></span> <button class="ghost" id="cleanBtn" type="button"></button></p>');
+    $('cleanBtn').textContent = T('清理沒用到的檔案');
+    $('cleanBtn').onclick = cleanStorage;
+    showUsage();
+  }
+  const ul = box.querySelector('ul');
+  ids.forEach(id => {
+    const b = LIB[id], p = PROG.books[id];
+    const li = document.createElement('li');
+    const chip = b.assetId ? T("<span class=\"chip ok\">已同步</span>") : T("<span class=\"chip loc\">只在這台裝置</span>");
+    const where = p && p.chTitle ? T("{0} 到「{1}」 · {2}", WHO === 'ruby' ? 'Ruby' : 'Joon', esc(p.chTitle), ago(p.at)) : T("還沒開始");
+    li.innerHTML = T("<button type=\"button\" class=\"open\"><span class=\"bt\">{0}</span><span class=\"bm\">{1}{2} · {3}</span></button><button type=\"button\" class=\"ghost rm\">移除</button>", esc(b.title || b.name), chip, (b.kind || '').toUpperCase(), where);
+    li.querySelector('.open').onclick = () => openBook(id);
+    const aud = document.createElement('button');
+    aud.type = 'button'; aud.className = 'ghost aud'; aud.hidden = true; aud.dataset.book = id;
+    li.insertBefore(aud, li.querySelector('.rm'));
+    aud.onclick = async () => {
+      if (!aud.dataset.sure){ aud.dataset.sure = '1'; aud.textContent = T('確定刪掉有聲書？'); setTimeout(() => { if (aud.isConnected && aud.dataset.sure){ delete aud.dataset.sure; renderShelfAudio(); } }, 3000); return; }
+      aud.disabled = true; aud.textContent = T('刪除中…');
+      await deleteBookAudio(id);
+      renderShelf();
+    };
+    const rm = li.querySelector('.rm');
+    rm.onclick = async () => {
+      if (!rm.dataset.sure){ rm.dataset.sure = '1'; rm.textContent = T("確定移除？"); setTimeout(() => { if (rm.isConnected){ delete rm.dataset.sure; rm.textContent = T("移除"); } }, 3000); return; }
+      const aid = b.assetId;
+      await deleteBookAudio(id);
+      delete LIB[id]; delete PROG.books[id];
+      await idb.del('json:' + id);
+      await pushLib(); savePos && ls.set('vob:prog:' + WHO, PROG); scheduleSync(true);
+      if (aid && cloud.assets){ try{ await cloud.assets.delete(aid); }catch(e){} }
+      renderShelf();
+    };
+    ul.appendChild(li);
+  });
+  renderShelfAudio();
+}
+// every imported audiobook chapter of one book: account copies and this device's copies
+async function bookAudioDocs(book){
+  const out = new Map();
+  for (let ch = 0; ch < 400; ch++){ const l = ls.get('vob:' + impKey(book, ch), null); if (l) out.set(impKey(book, ch), l); }
+  if (cloud.ready){
+    try{ const snap = await col().where('kind', '==', 'imp').where('book', '==', book).get(); snap.docs.forEach(d => out.set(d.id, d.data() || {})); }catch(e){}
+  }
+  return out;
+}
+async function renderShelfAudio(){
+  for (const btn of document.querySelectorAll('.shelf .aud')){
+    const docs = await bookAudioDocs(btn.dataset.book);
+    if (!btn.isConnected) return;
+    if (!docs.size){ btn.hidden = true; continue; }
+    const mb = [...docs.values()].reduce((a, d) => a + (d.size || 0) * (d.raw ? 1 : 4 / 3), 0) / 1e6;
+    btn.hidden = false; btn.disabled = false; delete btn.dataset.sure;
+    btn.textContent = T('🎧 刪掉有聲書（{0} 章 · {1} MB）', docs.size, Math.round(mb));
+  }
+}
+async function deleteBookAudio(book){
+  const docs = await bookAudioDocs(book);
+  if (S.id === book && prefs.engine === 'mp3' && S.playing) pause();
+  for (const [key, d] of docs){
+    for (const c of d.chunks || []){ try{ await cloud.assets.delete(typeof c === 'string' ? c : c.a); }catch(e){} }
+    if (cloud.ready){ try{ await enqueue(() => col().doc(key).delete()); }catch(e){} }
+    try{ localStorage.removeItem('vob:' + key); }catch(e){}
+    try{ await idb.del('impf:' + key); await idb.del('impal3:' + key); }catch(e){}
+    IMP.docs.delete(key); IMP.bytes.delete(key); IMP.index.delete(key); IMP.align && IMP.align.delete(key);
+  }
+}
+
+async function showUsage(){
+  try{
+    const r = await cloud.assets.list(), u = r.usage || {};
+    const el = $('storeState');
+    if (el) el.textContent = T('帳號空間：已用 {0} MB / {1} MB', Math.round((u.bytes || 0) / 1e6), Math.round((u.maxBytes || 0) / 1e6));
+  }catch(e){}
+}
+// delete account files that no book, chapter audiobook or prepared audio points at
+async function cleanStorage(){
+  const btn = $('cleanBtn'); if (!btn || !cloud.ready || !cloud.assets) return;
+  if (!btn.dataset.sure){ btn.dataset.sure = '1'; btn.textContent = T('確定清理？再按一次'); setTimeout(() => { if (btn.isConnected){ delete btn.dataset.sure; btn.textContent = T('清理沒用到的檔案'); } }, 4000); return; }
+  btn.disabled = true; btn.textContent = T('清理中…');
+  try{
+    const used = new Set();
+    Object.values(LIB).forEach(b => { if (b.assetId) used.add(b.assetId); });
+    for (const kind of ['imp', 'aud']){
+      const snap = await col().where('kind', '==', kind).get();
+      snap.docs.forEach(d => { const x = d.data() || {}; (x.chunks || []).forEach(c => used.add(typeof c === 'string' ? c : c && c.a)); });
+    }
+    const r = await cloud.assets.list();
+    let n = 0, bytes = 0;
+    for (const a of r.assets || []){
+      if (used.has(a.id)) continue;
+      try{ await cloud.assets.delete(a.id); n++; bytes += a.sizeBytes || 0; }catch(e){}
+    }
+    btn.textContent = n ? T('清掉 {0} 個檔案，省下 {1} MB', n, Math.round(bytes / 1e6)) : T('沒有需要清理的檔案');
+  }catch(e){ btn.textContent = T('清理失敗：{0}', e.code || e.message); }
+  btn.disabled = false; delete btn.dataset.sure;
+  showUsage();
+}
+function renderToc(){
+  const ol = $('chList'); ol.innerHTML = '';
+  const prog = (PROG.books[S.id] || {}).prog || {};
+  S.chapters.forEach((c, i) => {
+    const li = document.createElement('li');
+    if (c.front || c.back) li.className = 'side';
+    if (i === S.ch) li.classList.add('cur');
+    const pct = Math.round((prog[i] || 0) * 100);
+    const where = c.pages ? `p.${c.pages[0]}` : (c.back ? T("附錄") : c.front ? T("前言") : '');
+    let ai = '';
+    if (prefs.engine === 'mp3' && IMP.docs.has(impKey(S.id, i))) ai = '🎧';
+    if (useAI()){
+      const k = audKey(S.id, i, aiVoiceId()), ap = prepCount(k);
+      if (ap.total && ap.done) ai = ap.done >= ap.total ? '🔊✓' : `🔊${Math.round(ap.done / ap.total * 100)}%`;
+      if (PREP.job && PREP.job.key === k) ai = T("準備中") + (ai ? ' ' + ai.replace('🔊', '') : '');
+      else if (PREP.jobs.some(j => j.key === k)) ai = T("排隊") + (ai ? ' ' + ai.replace('🔊', '') : '');
+    }
+    li.innerHTML = `<button type="button"><span class="t">${esc(c.title)}</span><span class="p">${(pct >= 99 ? '✓' : pct ? pct + '%' : where) + (ai ? ' · ' + ai : '')}</span><span class="bar"><i style="width:${pct}%"></i></span></button>`;
+    li.querySelector('button').onclick = () => {
+      goTo(i, 0);
+      if (matchMedia('(max-width:860px)').matches){ $('toc').classList.add('collapsed'); $('tocToggle').textContent = T("顯示章節"); }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+    ol.appendChild(li);
+  });
+}
+function renderChapter(){
+  const c = S.chapters[S.ch], d = S.cache[S.ch];
+  $('chTitle').textContent = c.title;
+  $('chEyebrow').textContent = T("第 {0} / {1} 節", S.ch + 1, S.chapters.length) + (c.pages ? T(" · 第 {0}–{1} 頁", c.pages[0], c.pages[1]) : '');
+  const html = [];
+  if (!d.sents.length) html.push(T("<div class=\"loading\">這一節沒有可朗讀的文字（可能是圖片或掃描頁）。</div>"));
+  for (const p of d.paras){
+    html.push(`<div class="para${p.h ? ' h' : ''}"><div class="lab">${esc(p.label)}</div><div class="body">${
+      p.idx.map(i => `<span class="s${i < S.s ? ' done' : ''}" data-i="${i}">${esc(d.sents[i].t)}</span>`).join(' ')
+    }</div></div>`);
+  }
+  const next = S.chapters[S.ch + 1];
+  if (next) html.push(T("<div class=\"chend\"><button type=\"button\" id=\"chendBtn\"><small>下一章</small><b>{0}</b></button></div>", esc(next.title)));
+  $('text').innerHTML = html.join('');
+  const nb = $('chendBtn'); if (nb) nb.onclick = () => goTo(S.ch + 1, 0, false);
+  if (S.mode === 'listen') highlight(true); else updateNow();
+  renderPrep();
+}
+function spanAt(i){ return document.querySelector(`.s[data-i="${i}"]`); }
+function highlight(scroll){
+  const old = document.querySelector('.s.on'); if (old) old.classList.remove('on');
+  const el = spanAt(S.s);
+  if (el){
+    el.classList.add('on');
+    if (scroll && S.mode === 'listen'){
+      const r = el.getBoundingClientRect(), vh = window.innerHeight;
+      const barH = $('deck').offsetHeight || 90;
+      if (r.top < hdrH() + 20 || r.bottom > vh - barH - 30){
+        const smooth = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+        window.scrollTo({ top: window.scrollY + r.top - vh * 0.35, behavior: smooth ? 'smooth' : 'auto' });
+      }
+    }
+  }
+  updateNow();
+}
+function fmtMin(m){ m = Math.max(0, Math.round(m)); return m >= 60 ? T("{0} 小時 {1} 分", Math.floor(m / 60), m % 60) : T("{0} 分鐘", m); }
+function updateNow(){
+  const c = S.chapters[S.ch], d = S.cache[S.ch];
+  if (!c || !d) return;
+  $('nowTitle').textContent = c.title;
+  const n = d.sents.length || 1, frac = Math.min(1, (S.mode === 'read' ? S.s + 1 : S.s) / n);
+  const wpm = (S.lang === 'zh' ? 140 : 160) * prefs.rate;
+  const pg = d.sents[S.s] && d.sents[S.s].page ? ` · p.${d.sents[S.s].page}` : '';
+  if (S.mode === 'read'){
+    const readMin = d.words * (1 - frac) / (S.lang === 'zh' ? 300 : 230);
+    $('nowSub').textContent = T("讀到 {0}%{1} · 本章還要約 {2}", Math.round(frac * 100), pg, fmtMin(readMin));
+  } else {
+    $('nowSub').textContent = T("第 {0} / {1} 句{2} · 本章剩約 {3}", Math.min(S.s + 1, n), n, pg, fmtMin(d.words * (1 - frac) / wpm));
+  }
+  $('nowBar').style.width = (frac * 100) + '%';
+  $('chStat').innerHTML = T("{0} 句<br>聽約 {1}", n, fmtMin(d.words / wpm));
+  const first = S.ch === 0, last = S.ch >= S.chapters.length - 1;
+  $('prevCh').disabled = $('rPrevCh').disabled = first;
+  $('nextCh').disabled = $('rNextCh').disabled = last;
+}
+function hdrH(){ return 54; }   // breathing room at the top when scrolling to a sentence
+function deckHeight(){ document.documentElement.style.setProperty('--deck-h', ($('deck').offsetHeight || 90) + 'px'); document.documentElement.style.setProperty('--hdr-h', hdrH() + 'px'); }
+
+/* ---------- modes ---------- */
+function setMode(m){
+  if (m === S.mode && document.body.classList.contains(m === 'read' ? 'reading' : 'listening')) return;
+  if (m === 'read' && S.playing) pause();
+  S.mode = m; ls.set('vob:mode', m);
+  document.body.classList.toggle('reading', m === 'read');
+  document.body.classList.toggle('listening', m === 'listen');
+  document.querySelectorAll('#modeSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === m)));
+  $('txCtl').hidden = $('vcCtl').hidden = m === 'read';
+  $('rxCtl').hidden = m !== 'read';
+  $('tips').hidden = true;
+  if (!S.book) return;
+  renderChapter();
+  requestAnimationFrame(() => {
+    deckHeight();
+    const el = spanAt(S.s);
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    S.quietUntil = performance.now() + 700;
+    window.scrollTo({ top: window.scrollY + r.top - (m === 'read' ? hdrH() + 16 : window.innerHeight * 0.35) });
+  });
+}
+function topSentence(){
+  const spans = document.querySelectorAll('#text .s');
+  if (!spans.length) return null;
+  if (window.scrollY > 40 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) return +spans[spans.length - 1].dataset.i;
+  let lo = 0, hi = spans.length - 1, ans = 0;
+  while (lo <= hi){
+    const mid = (lo + hi) >> 1;
+    if (spans[mid].getBoundingClientRect().bottom < hdrH() + 10) lo = mid + 1; else { ans = mid; hi = mid - 1; }
+  }
+  return +spans[ans].dataset.i;
+}
+let scrollRaf = 0;
+window.addEventListener('scroll', () => {
+  if (S.mode !== 'read' || !S.book || scrollRaf || performance.now() < (S.quietUntil || 0)) return;
+  scrollRaf = requestAnimationFrame(() => {
+    scrollRaf = 0;
+    const i = topSentence();
+    if (i != null && i !== S.s){ S.s = i; savePos(); }
+  });
+}, { passive:true });
+function applyFs(){ document.documentElement.style.setProperty('--fs', (prefs.fs || 20) + 'px'); }
+
+/* ---------- open / import ---------- */
+function setStatus(t, err){ const s = $('status'); s.textContent = t; s.classList.toggle('err', !!err); }
+function meter(frac){ $('meter').hidden = frac == null; if (frac != null) $('meterBar').style.width = Math.round(frac * 100) + '%'; }
+function showShelf(){
+  pause(); flush();
+  $('empty').hidden = false; $('bookView').hidden = true; $('deck').hidden = true; $('shelfBtn').hidden = true; $('modeSeg').hidden = true; $('tips').hidden = true;
+  setStatus(T("也可以直接把檔案拖到這個框裡。")); meter(null);
+  renderShelf(); window.scrollTo(0, 0);
+}
+async function getBookData(id){
+  let data = await idb.get('json:' + id);
+  if (data) return data;
+  const meta = LIB[id];
+  if (!meta || !meta.assetId) return null;
+  try{
+    const r = await blobFetch(meta.assetId);
+    if (!r.ok) return null;
+    data = await r.json();
+    idb.put('json:' + id, data);
+    return data;
+  }catch(e){ return null; }
+}
+async function openBook(id){
+  pause();
+  setStatus(T("正在打開「{0}」…", (LIB[id] || {}).title || ''));
+  const data = await getBookData(id);
+  if (!data || !data.chapters){ setStatus(T("找不到這本書的內容。請重新加入一次檔案，進度會保留。"), true); return; }
+  S.quietUntil = performance.now() + 1500;
+  S.id = id; S.book = data; S.cache = {}; S.lang = data.lang || 'en';
+  S.chapters = data.chapters.map(c => Object.assign(c, { front: FRONT.test(c.title), back: BACK.test(c.title) }));
+  const p = PROG.books[id];
+  let ch = p ? p.ch : Math.max(0, S.chapters.findIndex(c => !c.front && !c.back));
+  if (!(ch >= 0 && ch < S.chapters.length)) ch = 0;
+  S.ch = ch; loadChapter(ch);
+  S.s = p ? Math.max(0, Math.min(p.s || 0, S.cache[ch].sents.length - 1)) : 0;
+  buildVoiceMenu(); applyFs();
+  if (prefs.engine === 'ai' && AI.state === 'off') idb.get('kokoro:ok').then(ok => { if (ok && AI.state === 'off') aiStart(false); });
+  impLoadDocs();
+  prepLoadDocs().then(async () => {
+    // a chapter left half-prepared on this device picks up again by itself
+    if (!useAI() || PREP.autoOff || S.id !== id) return;
+    const c = prepCount(audKey(id, S.ch, aiVoiceId()));
+    if (c.done > 0 && c.done < c.total && await idb.get('kokoro:ok')){
+      if (AI.state === 'off') aiStart(false);
+      prepQueue(S.ch, 0, true);
+    }
+  });
+  $('empty').hidden = true; $('bookView').hidden = false; $('deck').hidden = false; $('shelfBtn').hidden = false; $('modeSeg').hidden = false;
+  $('bkTitle').textContent = data.title || (LIB[id] || {}).title || '';
+  $('bkFile').textContent = T("{0} · {1} · {2} 節", (LIB[id] || {}).name || '', (data.kind || '').toUpperCase(), S.chapters.length);
+  renderToc(); setMode(S.mode); renderChapter(); setPlayIcon(); deckHeight();
+  if (S.mode === 'listen') highlight(true);
+  PROG.last = id; ls.set('vob:prog:' + WHO, PROG);
+  if (matchMedia('(max-width:860px)').matches) $('toc').classList.add('collapsed');
+}
+async function importFile(f){
+  if (!f) return;
+  if (!/\.(pdf|epub)$/i.test(f.name) && !/pdf|epub/.test(f.type)){ setStatus(T("請選擇 .pdf 或 .epub 檔案。"), true); return; }
+  const bytes = new Uint8Array(await f.arrayBuffer());
+  const isEpub = /\.epub$/i.test(f.name) || (bytes[0] === 0x50 && bytes[1] === 0x4B);
+  const id = 'b' + hash(f.name + '|' + bytes.byteLength);
+  try{
+    setStatus(T("正在整理「{0}」…", f.name)); meter(0);
+    const book = isEpub ? await parseEpub(bytes) : await parsePdf(bytes, (p, n) => { setStatus(T("正在整理 PDF：第 {0} / {1} 頁…", p, n)); meter(p / n); });
+    book.kind = isEpub ? 'epub' : 'pdf';
+    book.title = cleanText(book.title || f.name.replace(/\.(pdf|epub)$/i, '')).replace(/_/g, ' ').replace(/\.{2,}$/, '.');
+    if (!book.chapters.length) throw new Error('empty');
+    await idb.put('json:' + id, book);
+    const meta = Object.assign({}, LIB[id] || {}, { title: book.title, name: f.name, kind: book.kind, lang: book.lang, added: (LIB[id] || {}).added || Date.now() });
+    if (!meta.assetId && cloud.ready && cloud.assets){
+      setStatus(T("正在存到 Google Drive…")); meter(1);
+      meta.assetId = await uploadBook(id, book) || undefined;
+    }
+    LIB[id] = meta; await pushLib();
+    meter(null);
+    if (!meta.assetId) setStatus(cloud.ready ? T("這本書暫時只存在這台裝置，下次打開時會再試著同步。") : '');
+    openBook(id);
+  }catch(err){
+    console.error(err); meter(null);
+    setStatus(isEpub ? T("這個 EPUB 打不開，可能有 DRM 加密或格式損壞。") : T("這個 PDF 打不開，可能有密碼保護或檔案損壞。"), true);
+  }
+}
+
+/* ---------- wiring ---------- */
+$('pickBtn').onclick = () => $('file').click();
+$('file').onchange = e => { importFile(e.target.files[0]); e.target.value = ''; };
+$('shelfBtn').onclick = showShelf;
+const dz = $('empty');
+['dragenter', 'dragover'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); if (!dz.hidden) dz.classList.add('over'); }));
+['dragleave', 'drop'].forEach(t => document.addEventListener(t, e => { e.preventDefault(); if (t === 'drop' || e.target === dz) dz.classList.remove('over'); }));
+document.addEventListener('drop', e => { const f = e.dataTransfer && e.dataTransfer.files[0]; if (f) importFile(f); });
+
+$('playBtn').onclick = () => S.playing ? pause() : play();
+$('prevS').onclick = () => {
+  if (S.s > 0){ S.s--; highlight(true); savePos(); restartIfPlaying(); }
+  else if (S.ch > 0){ const d = loadChapter(S.ch - 1); goTo(S.ch - 1, d.sents.length - 1); }
+};
+$('nextS').onclick = () => {
+  const d = S.cache[S.ch];
+  if (d && S.s < d.sents.length - 1){ markDone(); S.s++; highlight(true); savePos(); restartIfPlaying(); }
+  else if (S.ch < S.chapters.length - 1) goTo(S.ch + 1, 0);
+};
+$('prevCh').onclick = $('rPrevCh').onclick = () => { if (S.ch > 0) goTo(S.ch - 1, 0); };
+$('nextCh').onclick = $('rNextCh').onclick = () => { if (S.ch < S.chapters.length - 1) goTo(S.ch + 1, 0); };
+function setFixing(on){
+  S.fixing = on; document.body.classList.toggle('fixing', on);
+  $('fixBtn').setAttribute('aria-pressed', on ? 'true' : 'false');
+  if (on) $('nowSub').textContent = T('聽一下聲音，點現在正在唸的那一句');
+}
+$('fixBtn').onclick = () => setFixing(!S.fixing);
+async function fixAt(i){
+  setFixing(false);
+  const key = impKey(S.id, S.ch), doc = IMP.docs.get(key), idx = IMP.index.get(key), R = IMP.align && IMP.align.get(key);
+  if (!doc || !idx || !R || !IMP.pos || IMP.pos.ch !== S.ch) return;
+  doc.anchors = doc.anchors || {};
+  // the tap comes a moment after the sentence started; the alignment looks back from here for the pause before it
+  doc.anchors[i] = Math.round(Math.max(0, IMP.pos.t - 0.3) * 100) / 100;
+  IMP.starts = impTimelineAligned(S.ch, idx.dur, R);
+  ls.set('vob:' + key, doc);
+  if (cloud.ready && (doc.chunks || []).length) pushImpDoc(key, doc);
+  S.s = i; document.querySelectorAll('.s').forEach(x => x.classList.toggle('done', +x.dataset.i < S.s));
+  highlight(true); savePos();
+  $('nowSub').textContent = T('已修正：這句之後會照新的位置對齊');
+}
+$('text').addEventListener('click', e => {
+  if (S.mode !== 'listen') return;
+  const s = e.target.closest('.s'); if (!s) return;
+  if (S.fixing){ fixAt(+s.dataset.i); return; }
+  S.s = +s.dataset.i;
+  document.querySelectorAll('.s').forEach(x => x.classList.toggle('done', +x.dataset.i < S.s));
+  highlight(false); savePos(); play();
+});
+function setGender(g){ prefs.gender = g; savePrefs(); buildVoiceMenu(); if (prefs.engine === 'ai') prepLoadDocs(); restartIfPlaying(); }
+$('gF').onclick = () => setGender('female');
+$('gM').onclick = () => setGender('male');
+$('voiceSel').onchange = () => {
+  if (prefs.engine === 'ai') prefs.aiVoice = Object.assign({}, prefs.aiVoice, { [prefs.gender]: $('voiceSel').value });
+  else { prefs.voice = prefs.voice || {}; prefs.voice[prefs.gender] = $('voiceSel').value; }
+  savePrefs(); if (prefs.engine === 'ai') prepLoadDocs(); restartIfPlaying();
+};
+document.querySelectorAll('#engSeg button').forEach(b => b.onclick = () => {
+  const e = b.dataset.eng;
+  if (e === 'ai') aiUnlock();
+  if (e === (prefs.engine || 'device')){ if (e === 'ai') openAiPanel(); return; }
+  const was = S.playing; pause();
+  prefs.engine = e; savePrefs(); buildVoiceMenu();
+  if (e === 'mp3'){ impLoadDocs(); renderPrep(); if (was) play(); return; }
+  if (e === 'ai'){
+    idb.get('kokoro:ok').then(ok => { if (ok && AI.state === 'off') aiStart(false); });
+    prepLoadDocs();
+    if (was) play();
+  } else { $('aiPanel').hidden = true; renderPrep(); renderToc(); if (was) play(); }
+});
+$('aiGo').onclick = () => { aiUnlock(); aiStart(true); };
+$('mp3File').onchange = e => { const fs = [...e.target.files]; e.target.value = ''; IMP.busy = ''; impImport(fs); };
+$('prepBtn').onclick = async () => {
+  if (prefs.engine === 'mp3'){ $('mp3File').click(); return; }
+  const key = audKey(S.id, S.ch, aiVoiceId()), label = $('prepBtn').textContent;
+  if (label === T("暫停準備") || label === T("取消")){
+    const j = PREP.jobs.find(j => j.key === key);
+    if (j){ j.cancel = true; j.stop = true; PREP.jobs = PREP.jobs.filter(x => x !== j); }
+    PREP.autoOff = true;
+    renderPrep(); renderToc(); return;
+  }
+  if (label === T("重新整理")){ prepLoadDocs(); return; }
+  PREP.lastErr = ''; PREP.autoOff = false; PREP.autoTried.clear();
+  if (AI.state === 'ready' || AI.state === 'loading'){ prepQueue(S.ch, S.s, true); return; }
+  PREP.after = () => prepQueue(S.ch, S.s, true);
+  if (await idb.get('kokoro:ok')) aiStart(false); else openAiPanel();
+};
+$('prepMiniBtn').onclick = () => $('prepBtn').click();
+$('prepMore').onclick = () => {
+  const next = S.chapters.findIndex((c, i) => i > S.ch && !c.back && !PREP.jobs.some(j => j.ch === i && j.book === S.id) && prepCount(audKey(S.id, i, aiVoiceId())).done < (prepCount(audKey(S.id, i, aiVoiceId())).total || 1));
+  if (next > 0) prepQueue(next, 0, false);
+  renderPrep();
+};
+$('aiClose').onclick = () => { $('aiPanel').hidden = true; };
+function aiDiag(){
+  const l = AI.last;
+  $('aiDiag').textContent = T("診斷：") + [
+    T("引擎 ") + AI.state,
+    T("播放器 ") + (AI.ctx ? AI.ctx.state : T("未啟動")),
+    T("靜音鍵設定 ") + (navigator.audioSession ? (navigator.audioSession.type || T("有")) : T("不支援")),
+    l ? T("最近一句音量 {0}、長 {1} 秒、花 {2} 秒", isNaN(l.rms) ? 'NaN' : l.rms.toFixed(3), l.dur.toFixed(1), (l.ms / 1000).toFixed(1)) : T("還沒產生過")
+  ].join(' · ') + '\n' + AI.log.join('\n');
+}
+$('aiTest').onclick = () => {
+  aiUnlock();
+  try{
+    const c = aiCtx(), o = c.createOscillator(), gn = c.createGain();
+    o.frequency.value = 440; gn.gain.value = 0.2; o.connect(gn); gn.connect(c.destination);
+    o.start(); o.stop(c.currentTime + 1);
+  }catch(e){ $('aiDiag').textContent = T("測試音失敗：") + e.message; return; }
+  setTimeout(aiDiag, 300);
+};
+$('rateSel').onchange = () => { prefs.rate = +$('rateSel').value; savePrefs(); updateNow(); restartIfPlaying(); };
+$('fsDown').onclick = () => { const i = S.s; prefs.fs = Math.max(15, (prefs.fs || 20) - 1); applyFs(); savePrefs(); requestAnimationFrame(() => { const el = spanAt(i); if (el) window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - hdrH() - 16 }); }); };
+$('fsUp').onclick = () => { const i = S.s; prefs.fs = Math.min(30, (prefs.fs || 20) + 1); applyFs(); savePrefs(); requestAnimationFrame(() => { const el = spanAt(i); if (el) window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - hdrH() - 16 }); }); };
+$('listenHere').onclick = () => { setMode('listen'); play(); };
+document.querySelectorAll('#modeSeg button').forEach(b => b.onclick = () => setMode(b.dataset.mode));
+function setDeckMin(on){
+  document.body.classList.toggle('deckMin', on);
+  $('deckTog').setAttribute('aria-label', on ? T('展開播放列') : T('收起播放列'));
+  ls.set('vob:deckMin', on); deckHeight();
+}
+$('deckTog').onclick = () => setDeckMin(!document.body.classList.contains('deckMin'));
+setDeckMin(!!ls.get('vob:deckMin', false));
+$('dlBtn').onclick = $('dlMini').onclick = downloadBook;
+$('tipsClose').onclick = () => { $('tips').hidden = true; };
+$('tocToggle').onclick = () => { const c = $('toc').classList.toggle('collapsed'); $('tocToggle').textContent = c ? T("顯示章節") : T("收起章節"); };
+
+function paintWho(){ document.querySelectorAll('#whoSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.who === WHO))); }
+document.querySelectorAll('#whoSeg button').forEach(b => b.onclick = async () => {
+  if (b.dataset.who === WHO) return;
+  pause(); flush();
+  WHO = b.dataset.who; ls.set('vob:who', WHO); paintWho();
+  PROG = ls.get('vob:prog:' + WHO, null) || { books:{}, prefs:defPrefs(), last:null, at:0 };
+  prefs = Object.assign(defPrefs(), PROG.prefs || {});
+  setUI(prefs.ui || (WHO === 'joon' ? 'ko' : 'zh'), false);
+  showShelf();
+  if (cloud.ready){ try{ const snap = await col().doc('prog-' + WHO).get(); if (snap.exists) mergeProg(snap.data()); }catch(e){} renderShelf(); }
+  if (PROG.last && LIB[PROG.last]) openBook(PROG.last);
+});
+
+if (synth){ if (synth.addEventListener) synth.addEventListener('voiceschanged', buildVoiceMenu); else synth.onvoiceschanged = buildVoiceMenu; }
+document.addEventListener('keydown', e => {
+  if (!S.book || /INPUT|SELECT|TEXTAREA/.test(e.target.tagName) || S.mode !== 'listen') return;
+  if (e.code === 'Space'){ e.preventDefault(); $('playBtn').click(); }
+  else if (e.key === 'ArrowLeft') $('prevS').click();
+  else if (e.key === 'ArrowRight') $('nextS').click();
+});
+window.addEventListener('pagehide', () => { if (S.id) savePos(true); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden'){ if (S.id) savePos(true); else flush(); }
+  else if (S.playing) keepAwake(true);
+});
+window.addEventListener('resize', deckHeight);
+
+function setUI(l, save){
+  if (!I18N_D[l]) l = 'zh';
+  UI = l;
+  if (save){ prefs.ui = l; savePrefs(); }
+  applyI18n(); renderShelf(); renderSync();
+  if (S.book){
+    renderToc(); renderChapter(); buildVoiceMenu(); renderPrep(); setPlayIcon();
+    $('bkFile').textContent = T("{0} · {1} · {2} 節", (LIB[S.id] || {}).name || '', (S.book.kind || '').toUpperCase(), S.chapters.length);
+  }
+  $('tocToggle').textContent = T($('toc').classList.contains('collapsed') ? "顯示章節" : "收起章節");
+  if (!$('tips').hidden) renderTips();
+  if (!$('aiPanel').hidden){ renderAiPanel(); aiDiag(); }
+}
+document.querySelectorAll('#langSeg button').forEach(b => b.onclick = () => setUI(b.dataset.ui, true));
+
+/* ---------- start ---------- */
+paintWho(); applyFs(); applyI18n(); setMode(S.mode); renderShelf();
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+try{ navigator.storage && navigator.storage.persist && navigator.storage.persist(); }catch(e){}
+$('loginBtn').onclick = () => { $('loginErr').textContent = ''; gSignIn(false); };
+(async () => {
+  // signed in on this device before: open straight away (works offline); otherwise show the sign-in page
+  if (gBack === 'ok'){
+    try{
+      if (!(await gCheckUser())){ $('login').hidden = false; $('loginErr').textContent = T('這個 Google 帳號不能使用 Voice of Books，請換 R&J 的帳號。'); return; }
+    }catch(e){ if (!G.user){ $('login').hidden = false; $('loginErr').textContent = T('登入沒有完成：{0}', e.message); return; } }
+  } else if (gBack === 'failed' && !G.user){ $('login').hidden = false; $('loginErr').textContent = T('登入沒有完成，請再試一次。'); return; }
+  if (!G.user){
+    $('login').hidden = false;
+    if (!GCLIENT){ $('loginBtn').disabled = true; $('loginErr').textContent = T('還沒設定 Google 登入。'); }
+    else if (navigator.onLine === false){ $('loginErr').textContent = T('第一次登入需要網路。'); }
+    return;
+  }
+  // the Google pass lasts an hour: renew it quietly when the app opens (not while something is playing)
+  if (!gValid() && gBack !== 'silent-failed' && navigator.onLine !== false && Date.now() - ls.get('vob:gtry', 0) > 120000){ gSignIn(true); return; }
+  setStatus(T("正在連到你的帳號…"));
+  await initCloud();
+  setUI(prefs.ui || UI, false);
+  setStatus(T("也可以直接把檔案拖到這個框裡。"));
+  renderShelf();
+  if (PROG.last && LIB[PROG.last]) openBook(PROG.last);
+  resync();
+})();
+})();
+</script>
 </html>
