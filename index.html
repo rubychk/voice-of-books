@@ -70,12 +70,19 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .shelf h3{font-family:var(--f-read);font-weight:600;font-size:20px;margin:0 0 2px}
 .shelf .hint{font-size:13px;color:var(--muted);margin:0 0 12px}
 .shelf ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
-.shelf li{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-.shelf .aud{font-size:12px;white-space:nowrap}
-.shelf .open{flex:1;min-width:0;text-align:left;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 14px;display:grid;gap:2px}
-.shelf .open:hover{border-color:var(--accent)}
-.shelf .bt{font-family:var(--f-read);font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.shelf .bm{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.shelf li{background:var(--bg);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.shelf li:hover{border-color:var(--accent)}
+.shelf .open{display:grid;gap:4px;width:100%;text-align:left;background:none;border:0;border-radius:0;padding:14px 16px 10px;cursor:pointer;color:inherit}
+.shelf .bt{font-family:var(--f-read);font-size:18px;font-weight:600;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.shelf .bm{font-size:12.5px;color:var(--muted);line-height:1.5}
+.shelf .bm .chip{vertical-align:1px}
+.shelf .acts{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:2px 4px;padding:0 10px 8px}
+.shelf .acts button{background:none;border:0;padding:6px 8px;font-size:12.5px;color:var(--muted);border-radius:6px;cursor:pointer}
+.shelf .acts button:hover{background:var(--line);color:var(--ink)}
+.shelf .acts button[data-sure]{color:var(--warn);font-weight:600}
+.shelf .acts .aud::before{content:"";display:inline-block;width:12px;height:12px;margin:0 5px -1px 0;background:currentColor;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M4 14v-2a8 8 0 0 1 16 0v2'/%3E%3Crect x='3' y='14' width='4' height='6' rx='1.5'/%3E%3Crect x='17' y='14' width='4' height='6' rx='1.5'/%3E%3C/svg%3E") center/contain no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M4 14v-2a8 8 0 0 1 16 0v2'/%3E%3Crect x='3' y='14' width='4' height='6' rx='1.5'/%3E%3Crect x='17' y='14' width='4' height='6' rx='1.5'/%3E%3C/svg%3E") center/contain no-repeat}
 .chip{display:inline-block;font-size:11px;border-radius:999px;padding:0 7px;border:1px solid currentColor;margin-right:6px}
 .chip.ok{color:var(--ok)} .chip.loc{color:var(--warn)}
 .sync{font-size:12px;color:var(--muted)}
@@ -494,6 +501,8 @@ Object.assign(I18N_D.ko, {"再按一次播放": "재생을 한 번 더 누르세
 Object.assign(I18N_D.en, {"再按一次播放": "Tap play once more"});
 Object.assign(I18N_D.ko, {"存在你們的 Google Drive": "Google Drive에 저장", "書、有聲書和進度都存在 Google Drive，電腦和手機是同一個書架；手機上也留一份，沒網路也能聽。": "책·오디오북·진도가 Google Drive에 저장되어 컴퓨터와 휴대폰이 같은 책장을 씁니다. 휴대폰에도 사본이 있어 오프라인에서도 들을 수 있습니다.", "用裝置內建的語音朗讀；想要更自然的聲音，就匯入 make_audiobook.py 轉好的有聲書 MP3。": "기기 내장 음성으로 읽습니다. 더 자연스러운 목소리는 make_audiobook.py로 만든 오디오북 MP3를 가져오세요.", "用 R&J 的 Google 帳號登入。這台裝置登入一次就會記住，之後沒網路也能打開。": "R&J Google 계정으로 로그인하세요. 이 기기에서 한 번 로그인하면 기억되어 오프라인에서도 열 수 있습니다.", "用 Google 登入": "Google로 로그인", "已同步到 Google Drive（{0}），電腦和手機都看得到。": "Google Drive({0})에 동기화됨 · 컴퓨터와 휴대폰에서 모두 보입니다.", "暫時沒有連上 Google Drive，書和進度先存在這台裝置，連上後會自動同步。": "지금은 Google Drive에 연결되지 않았습니다. 책과 진도는 이 기기에 저장되고, 연결되면 자동 동기화됩니다.", "重新連線": "다시 연결", "正在存到 Google Drive…": "Google Drive에 저장 중…", "這個 Google 帳號不能使用 Voice of Books，請換 R&J 的帳號。": "이 Google 계정은 Voice of Books를 사용할 수 없습니다. R&J 계정으로 로그인하세요.", "登入沒有完成：{0}": "로그인이 완료되지 않았습니다: {0}", "登入沒有完成，請再試一次。": "로그인이 완료되지 않았습니다. 다시 시도하세요.", "還沒設定 Google 登入。": "Google 로그인이 아직 설정되지 않았습니다.", "第一次登入需要網路。": "처음 로그인할 때는 인터넷이 필요합니다."});
 Object.assign(I18N_D.en, {"存在你們的 Google Drive": "Kept in your Google Drive", "書、有聲書和進度都存在 Google Drive，電腦和手機是同一個書架；手機上也留一份，沒網路也能聽。": "Books, audiobooks and progress live in Google Drive, so computer and phone share one shelf; the phone keeps a copy for listening offline.", "用裝置內建的語音朗讀；想要更自然的聲音，就匯入 make_audiobook.py 轉好的有聲書 MP3。": "Reads with your device’s built-in voices; for a more natural voice, import audiobook MP3s made with make_audiobook.py.", "用 R&J 的 Google 帳號登入。這台裝置登入一次就會記住，之後沒網路也能打開。": "Sign in with the R&J Google account. This device remembers it, so the app opens even offline.", "用 Google 登入": "Sign in with Google", "已同步到 Google Drive（{0}），電腦和手機都看得到。": "Synced to Google Drive ({0}) · visible on computer and phone.", "暫時沒有連上 Google Drive，書和進度先存在這台裝置，連上後會自動同步。": "Not connected to Google Drive right now; books and progress are kept on this device and sync when connected.", "重新連線": "Reconnect", "正在存到 Google Drive…": "Saving to Google Drive…", "這個 Google 帳號不能使用 Voice of Books，請換 R&J 的帳號。": "This Google account can’t use Voice of Books. Please sign in with the R&J account.", "登入沒有完成：{0}": "Sign-in didn’t finish: {0}", "登入沒有完成，請再試一次。": "Sign-in didn’t finish. Please try again.", "還沒設定 Google 登入。": "Google sign-in isn’t set up yet.", "第一次登入需要網路。": "The first sign-in needs a connection."});
+Object.assign(I18N_D.ko, {"刪掉有聲書 · {0} MB": "오디오북 삭제 · {0} MB", "有聲書 {0} 章": "오디오북 {0}장"});
+Object.assign(I18N_D.en, {"刪掉有聲書 · {0} MB": "Delete audio · {0} MB", "有聲書 {0} 章": "audiobook {0} ch", "移除": "Remove book", "確定移除？": "Remove? Tap again", "確定刪掉有聲書？": "Delete audio? Tap again"});
 let UI = 'en';
 function T(k, ...a){
   const d = I18N_D[UI]; const s = d && d[k] != null ? d[k] : k;
@@ -2408,7 +2417,8 @@ function renderShelf(){
     li.querySelector('.open').onclick = () => openBook(id);
     const aud = document.createElement('button');
     aud.type = 'button'; aud.className = 'ghost aud'; aud.hidden = true; aud.dataset.book = id;
-    li.insertBefore(aud, li.querySelector('.rm'));
+    const acts = document.createElement('div'); acts.className = 'acts';
+    acts.append(aud, li.querySelector('.rm')); li.appendChild(acts);
     aud.onclick = async () => {
       if (!aud.dataset.sure){ aud.dataset.sure = '1'; aud.textContent = T('確定刪掉有聲書？'); setTimeout(() => { if (aud.isConnected && aud.dataset.sure){ delete aud.dataset.sure; renderShelfAudio(); } }, 3000); return; }
       aud.disabled = true; aud.textContent = T('刪除中…');
@@ -2446,7 +2456,9 @@ async function renderShelfAudio(){
     if (!docs.size){ btn.hidden = true; continue; }
     const mb = [...docs.values()].reduce((a, d) => a + (d.size || 0) * (d.raw ? 1 : 4 / 3), 0) / 1e6;
     btn.hidden = false; btn.disabled = false; delete btn.dataset.sure;
-    btn.textContent = T('🎧 刪掉有聲書（{0} 章 · {1} MB）', docs.size, Math.round(mb));
+    btn.textContent = T('刪掉有聲書 · {0} MB', Math.round(mb));
+    const bm = btn.closest('li') && btn.closest('li').querySelector('.bm');
+    if (bm && !bm.querySelector('.audn')) bm.insertAdjacentHTML('beforeend', '<span class="audn"> · ' + esc(T('有聲書 {0} 章', docs.size)) + '</span>');
   }
 }
 async function deleteBookAudio(book){

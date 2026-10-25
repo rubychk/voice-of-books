@@ -1,6 +1,6 @@
 // Keeps the app and the libraries it needs on the phone, so it opens without a connection.
 // Books, audio and progress are kept by the app itself (IndexedDB) and in Google Drive.
-const CACHE = 'vob-v2';
+const CACHE = 'vob-v3';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'lib/pdf.min.js', 'lib/pdf.worker.min.js', 'lib/jszip.min.js'];
 const CACHEABLE = /^https:\/\/(cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|fonts\.googleapis\.com|fonts\.gstatic\.com)\//;
 
