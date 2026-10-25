@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Voice of Books</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Voice of Books">
+<meta name="theme-color" content="#1f6b5c">
+<style>
+:root{--bg:#f4f3ef;--surface:#fbfaf7;--ink:#1d211f;--muted:#5f6763;--line:#d9d7d0;--accent:#1f6b5c;--ok:#1f7a45;--bad:#a8432f}
+@media (prefers-color-scheme:dark){:root{--bg:#151816;--surface:#1d211f;--ink:#e9ece9;--muted:#9aa39e;--line:#333a36;--accent:#5fb39d;--ok:#6cc08b;--bad:#e38a76}}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,"PingFang TC",sans-serif}
+main{max-width:560px;margin:0 auto;padding:calc(20px + env(safe-area-inset-top)) 16px 40px}
+h1{font-size:22px;margin:0 0 6px}
+p{margin:0 0 12px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:12px 0}
+.card h2{font-size:16px;margin:0 0 6px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button{font:inherit;font-weight:600;border:0;border-radius:999px;padding:9px 18px;background:var(--accent);color:#fff;cursor:pointer}
+button.stop{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.st{font-variant-numeric:tabular-nums;font-size:14px;color:var(--muted)}
+.res{font-weight:600;margin-top:6px;font-size:14px}
+.ok{color:var(--ok)} .bad{color:var(--bad)}
+ol{padding-left:20px;margin:0;color:var(--muted)}
+</style>
+</head>
+<body>
+<main>
+  <h1>Voice of Books · 測試版</h1>
+  <p>先確認這三件事在 iPhone 上可以，再把整個 Voice of Books 搬過來。</p>
+
+  <div class="card"><h2>0. 狀態</h2>
+    <div class="res" id="mode"></div>
+    <div class="res" id="net"></div>
+    <div class="res" id="store">檢查中…</div>
+  </div>
+
+  <div class="card"><h2>1. 沒網路也能打開</h2>
+    <ol>
+      <li>用 Safari 打開這頁 → 分享 →「加入主畫面」。</li>
+      <li>從主畫面的圖示打開一次，等「離線準備」變成 ✓。</li>
+      <li>打開飛航模式，把這個 App 往上滑掉，再從主畫面打開。打得開就成功。</li>
+    </ol>
+    <div class="res" id="sw">離線準備：檢查中…</div>
+  </div>
+
+  <div class="card" data-k="a"><h2>2. 螢幕暗掉繼續播（網路上的音檔）</h2>
+    <div class="row"><button data-play>播放</button><button class="stop" data-stop>停止</button><span class="st" data-st>—</span></div><div class="res" data-res></div></div>
+
+  <div class="card" data-k="b"><h2>3. 螢幕暗掉繼續播（存在手機裡的音檔，離線用）</h2>
+    <div class="row"><button data-play>播放</button><button class="stop" data-stop>停止</button><span class="st" data-st>—</span></div><div class="res" data-res></div></div>
+
+  <p class="st">播放後按電源鍵讓螢幕暗掉，等 30 秒再打開，看那一格的結果。測試音是一段嗡嗡的音調，不是書。</p>
+</main>
+<script>
+const $ = (c, s) => c.querySelector(s);
+const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+document.getElementById('mode').textContent = standalone ? '✓ 從主畫面打開' : '在瀏覽器裡打開（請加入主畫面再測）';
+const net = () => { document.getElementById('net').textContent = navigator.onLine ? '有網路' : '沒有網路（離線中）'; };
+net(); addEventListener('online', net); addEventListener('offline', net);
+
+// offline: service worker caches this page and the test audio
+if ('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').then(() => navigator.serviceWorker.ready).then(() => {
+    const el = document.getElementById('sw'); el.textContent = '✓ 離線準備好了'; el.className = 'res ok';
+  }).catch(e => { const el = document.getElementById('sw'); el.textContent = '✗ 離線準備失敗：' + e.message; el.className = 'res bad'; });
+} else document.getElementById('sw').textContent = '✗ 這裡不支援離線';
+
+// storage: does the phone keep what this app saves?
+(async () => {
+  const el = document.getElementById('store'), now = new Date().toLocaleString();
+  let a; try{ a = localStorage.getItem('vob:first'); if (!a){ a = now; localStorage.setItem('vob:first', a); } }catch(e){ a = '不能用'; }
+  let p = '?';
+  try{ if (navigator.storage && navigator.storage.persist) p = (await navigator.storage.persist()) ? '是' : '否'; }catch(e){}
+  let q = '';
+  try{ const e = await navigator.storage.estimate(); q = ` · 可用空間約 ${Math.round(e.quota / 1e9)} GB`; }catch(e){}
+  el.textContent = `第一次記錄：${a} · 長期保存：${p}${q}`;
+})();
+
+// a copy of the audio kept on the phone (IndexedDB), played from there
+const idb = () => new Promise((res, rej) => { const r = indexedDB.open('vob-test', 1); r.onupgradeneeded = () => r.result.createObjectStore('f'); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); });
+async function localBlobUrl(){
+  const db = await idb();
+  let blob = await new Promise(res => { const g = db.transaction('f').objectStore('f').get('tone'); g.onsuccess = () => res(g.result); g.onerror = () => res(null); });
+  if (!blob){
+    const r = await fetch('test-tone.mp3'); blob = await r.blob();
+    await new Promise(res => { const t = db.transaction('f', 'readwrite'); t.objectStore('f').put(blob, 'tone'); t.oncomplete = res; t.onerror = res; });
+  }
+  return URL.createObjectURL(new Blob([blob], { type:'audio/mpeg' }));
+}
+let blobUrl = null; localBlobUrl().then(u => blobUrl = u).catch(() => {});
+
+const players = {};
+document.querySelectorAll('.card[data-k]').forEach(card => {
+  const k = card.dataset.k, st = $(card, '[data-st]'), res = $(card, '[data-res]');
+  const P = players[k] = { el: null, hiddenAt: null, posAtHide: 0 };
+  $(card, '[data-play]').onclick = async () => {
+    Object.entries(players).forEach(([kk, p]) => { if (kk !== k && p.el) p.el.pause(); });
+    res.textContent = ''; res.className = 'res';
+    try{
+      if (k === 'b' && !blobUrl) throw new Error('還在準備，等兩秒再按');
+      if (!P.el){ P.el = new Audio(k === 'a' ? 'test-tone.mp3' : blobUrl); P.el.loop = true; P.el.onerror = () => { res.textContent = '✗ 播不出來（' + (P.el.error && P.el.error.code) + '）'; res.className = 'res bad'; }; }
+      await P.el.play();
+      if ('mediaSession' in navigator) navigator.mediaSession.metadata = new MediaMetadata({ title: '測試 ' + (k === 'a' ? '2' : '3'), artist: 'Voice of Books' });
+    }catch(e){ res.textContent = '✗ ' + e.message; res.className = 'res bad'; }
+  };
+  $(card, '[data-stop]').onclick = () => P.el && P.el.pause();
+  setInterval(() => { if (P.el && !P.el.paused) st.textContent = '播放中 ' + P.el.currentTime.toFixed(0) + ' 秒'; }, 500);
+  P.hide = () => { if (P.el && !P.el.paused){ P.hiddenAt = Date.now(); P.posAtHide = P.el.currentTime; } };
+  P.show = () => {
+    if (P.hiddenAt == null) return;
+    const away = (Date.now() - P.hiddenAt) / 1000; P.hiddenAt = null;
+    if (away < 5) return;
+    let played = P.el.currentTime - P.posAtHide; if (played < 0) played += P.el.duration || 0;   // looped
+    const ok = played > away * 0.8;
+    res.textContent = (ok ? '✓ 螢幕暗掉時有繼續播' : '✗ 螢幕暗掉時停了') + `（離開 ${away.toFixed(0)} 秒，播了 ${played.toFixed(0)} 秒）`;
+    res.className = 'res ' + (ok ? 'ok' : 'bad');
+  };
+});
+document.addEventListener('visibilitychange', () => Object.values(players).forEach(p => document.visibilityState === 'hidden' ? p.hide() : p.show()));
+</script>
+</body>
+</html>
